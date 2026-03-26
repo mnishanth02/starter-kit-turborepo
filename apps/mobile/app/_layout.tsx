@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { tokenCache } from '@/lib/auth';
+import { getClerkEnv } from '@/lib/env';
 import { QueryProvider } from '@/providers/query-provider';
 import 'react-native-reanimated';
 
@@ -45,11 +46,7 @@ function InitialLayout() {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-
-  const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  if (!publishableKey) {
-    throw new Error('EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is not set');
-  }
+  const { EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: publishableKey } = getClerkEnv();
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>

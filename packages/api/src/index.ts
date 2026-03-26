@@ -1,10 +1,11 @@
-import { clerkMiddleware } from '@hono/clerk-auth';
 import { ErrorCode } from '@starter/validation';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { apiError, globalErrorHandler } from './lib/errors';
+import { clerkAuthMiddleware } from './middleware/clerk';
 import { requestId } from './middleware/request-id';
 import { health } from './routes/health';
+import { me } from './routes/me';
 
 const app = new Hono().basePath('/api');
 
@@ -38,10 +39,10 @@ app.use(
     credentials: true,
   }),
 );
-app.use('*', clerkMiddleware());
+app.use('*', clerkAuthMiddleware);
 
 // Routes — chain to capture types for RPC client derivation
-const routes = app.route('/health', health);
+const routes = app.route('/health', health).route('/me', me);
 
 export type AppType = typeof routes;
 export default app;

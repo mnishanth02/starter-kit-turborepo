@@ -1,4 +1,3 @@
-import { getAuth } from '@hono/clerk-auth';
 import { ErrorCode } from '@starter/validation';
 import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
@@ -11,9 +10,16 @@ import { apiError } from '../lib/errors';
  * Checks that clerkAuth() returns a valid userId.
  */
 export const requireAuth = createMiddleware(async (c, next) => {
-  const auth = getAuth(c);
+  const auth = c.get('auth');
 
   if (!auth?.userId) {
+    const acceptsHtml = c.req.header('accept')?.includes('text/html') ?? false;
+    const isNavigation = c.req.header('sec-fetch-mode') === 'navigate';
+
+    if (auth?.redirectTo && c.req.method === 'GET' && (acceptsHtml || isNavigation)) {
+      return c.redirect(auth.redirectTo, 307);
+    }
+
     return apiError(c, ErrorCode.UNAUTHORIZED, 'Authentication required');
   }
 
@@ -27,7 +33,7 @@ export const requireAuth = createMiddleware(async (c, next) => {
  */
 export function requireResourceOwner(getResourceUserId: (c: Context) => string | Promise<string>) {
   return createMiddleware(async (c, next) => {
-    const auth = getAuth(c);
+    const auth = c.get('auth');
 
     if (!auth?.userId) {
       return apiError(c, ErrorCode.UNAUTHORIZED, 'Authentication required');

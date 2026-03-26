@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppState, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -12,22 +12,35 @@ export function NetworkErrorBoundary({ children }: NetworkErrorBoundaryProps) {
   const [isApiReachable, setIsApiReachable] = useState(true);
   const [isChecking, setIsChecking] = useState(false);
   const queryClient = useQueryClient();
+  const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+  const hasValidBaseUrl = (() => {
+    if (!baseUrl) {
+      return false;
+    }
+
+    try {
+      const url = new URL(baseUrl);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  })();
 
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const tintColor = useThemeColor({}, 'tint');
   const iconColor = useThemeColor({}, 'icon');
 
-  const checkApiHealth = async (): Promise<boolean> => {
+  const checkApiHealth = useCallback(async (): Promise<boolean> => {
     setIsChecking(true);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     try {
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
-      if (!baseUrl) {
+      if (!hasValidBaseUrl || !baseUrl) {
         setIsApiReachable(false);
         return false;
       }
+
       const response = await fetch(`${baseUrl}/api/health`, {
         method: 'GET',
         signal: controller.signal,
@@ -42,17 +55,19 @@ export function NetworkErrorBoundary({ children }: NetworkErrorBoundaryProps) {
       clearTimeout(timeout);
       setIsChecking(false);
     }
-  };
+  }, [baseUrl, hasValidBaseUrl]);
 
   useEffect(() => {
-    checkApiHealth();
+    void checkApiHealth();
 
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') checkApiHealth();
+      if (state === 'active') {
+        void checkApiHealth();
+      }
     });
 
     return () => subscription.remove();
-  }, []);
+  }, [checkApiHealth]);
 
   const handleRetry = async () => {
     const reachable = await checkApiHealth();
@@ -62,8 +77,7 @@ export function NetworkErrorBoundary({ children }: NetworkErrorBoundaryProps) {
   };
 
   if (!isApiReachable) {
-    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
-    const isMissingUrl = !baseUrl;
+    const isMissingUrl = !hasValidBaseUrl;
 
     return (
       <View style={[styles.container, { backgroundColor }]}>
@@ -73,17 +87,13 @@ export function NetworkErrorBoundary({ children }: NetworkErrorBoundaryProps) {
         </Text>
         <Text style={[styles.message, { color: iconColor }]}>
           {isMissingUrl
-            ? 'The API base URL is not set. Configure EXPO_PUBLIC_API_BASE_URL in your environment.'
+            ? 'The API base URL is missing or invalid. Configure EXPO_PUBLIC_API_BASE_URL with a full http:// or https:// URL.'
             : 'Unable to connect to the server. Please check your connection and try again.'}
         </Text>
         {__DEV__ && (
           <View style={[styles.debugContainer, { borderColor: iconColor }]}>
-            <Text style={[styles.debugLabel, { color: iconColor }]}>
-              EXPO_PUBLIC_API_BASE_URL
-            </Text>
-            <Text style={[styles.debugValue, { color: textColor }]}>
-              {baseUrl ?? 'NOT SET'}
-            </Text>
+            <Text style={[styles.debugLabel, { color: iconColor }]}>EXPO_PUBLIC_API_BASE_URL</Text>
+            <Text style={[styles.debugValue, { color: textColor }]}>{baseUrl ?? 'NOT SET'}</Text>
           </View>
         )}
         <TouchableOpacity
@@ -92,9 +102,7 @@ export function NetworkErrorBoundary({ children }: NetworkErrorBoundaryProps) {
           disabled={isChecking}
           activeOpacity={0.7}
         >
-          <Text style={styles.retryText}>
-            {isChecking ? 'Checking…' : 'Retry'}
-          </Text>
+          <Text style={styles.retryText}>{isChecking ? 'Checking…' : 'Retry'}</Text>
         </TouchableOpacity>
       </View>
     );
