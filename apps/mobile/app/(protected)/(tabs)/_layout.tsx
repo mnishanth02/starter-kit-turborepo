@@ -1,9 +1,21 @@
+import { useAuth } from '@clerk/clerk-expo';
 import { Tabs } from 'expo-router';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+
+function SignOutButton() {
+  const { signOut } = useAuth();
+
+  return (
+    <TouchableOpacity onPress={() => signOut()} style={styles.signOut}>
+      <Text style={styles.signOutText}>Sign Out</Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -12,8 +24,9 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme === 'dark' ? 'dark' : 'light'].tint,
-        headerShown: false,
+        headerShown: true,
         tabBarButton: HapticTab,
+        headerRight: () => <SignOutButton />,
       }}
     >
       <Tabs.Screen
@@ -33,3 +46,15 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  signOut: {
+    marginRight: 16,
+    padding: 4,
+  },
+  signOutText: {
+    color: '#ef4444',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});

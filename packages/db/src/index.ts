@@ -1,2 +1,2 @@
-// Database client and schema exports will be added in Phase 3
-export {};
+export { db, testConnection } from './client';
+export * from './schema';

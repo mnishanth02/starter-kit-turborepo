@@ -23,7 +23,9 @@ app.use(
     origin: (origin) => {
       const envVar = process.env.CORS_ALLOWED_ORIGINS;
       if (!envVar || envVar.trim() === '') {
-        // No restriction in development when env var is unset
+        if (process.env.NODE_ENV === 'production') {
+          return null;
+        }
         return origin;
       }
       const allowed = envVar.split(',').map((o) => o.trim());

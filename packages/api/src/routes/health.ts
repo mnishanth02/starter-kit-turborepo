@@ -1,12 +1,25 @@
+import { testConnection } from '@starter/db';
 import { Hono } from 'hono';
 
-// Chain .get() to capture route types for RPC inference
-const health = new Hono().get('/', (c) => {
-  return c.json({
-    status: 'ok' as const,
-    db: false, // Wired to real DB check in Phase 3
-    timestamp: new Date().toISOString(),
-  });
+const health = new Hono().get('/', async (c) => {
+  let dbHealthy = false;
+  try {
+    dbHealthy = await testConnection();
+  } catch {
+    dbHealthy = false;
+  }
+
+  const status = dbHealthy ? 'ok' : 'degraded';
+  const statusCode = dbHealthy ? 200 : 503;
+
+  return c.json(
+    {
+      status: status as 'ok' | 'degraded',
+      db: dbHealthy,
+      timestamp: new Date().toISOString(),
+    },
+    statusCode,
+  );
 });
 
 export { health };

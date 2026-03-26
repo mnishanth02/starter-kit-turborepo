@@ -19,11 +19,11 @@
   },
   "dependencies": {
     "@clerk/backend": "^3.2.3",
-    "@starter/db": "workspace:*",
     "@starter/validation": "workspace:*"
   },
   "devDependencies": {
     "@starter/typescript-config": "workspace:*",
+    "@types/node": "^22.15.21",
     "typescript": "^6.0.2"
   }
 }

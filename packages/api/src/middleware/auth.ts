@@ -28,9 +28,14 @@ export const requireAuth = createMiddleware(async (c, next) => {
 export function requireResourceOwner(getResourceUserId: (c: Context) => string | Promise<string>) {
   return createMiddleware(async (c, next) => {
     const auth = getAuth(c);
+
+    if (!auth?.userId) {
+      return apiError(c, ErrorCode.UNAUTHORIZED, 'Authentication required');
+    }
+
     const resourceUserId = await getResourceUserId(c);
 
-    if (auth?.userId !== resourceUserId) {
+    if (auth.userId !== resourceUserId) {
       return apiError(c, ErrorCode.FORBIDDEN, 'You do not have access to this resource');
     }
 
