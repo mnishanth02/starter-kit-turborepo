@@ -1,5 +1,6 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
+  "ui": "tui",
   "globalDependencies": ["**/.env.*local"],
   "globalEnv": ["NODE_ENV"],
   "tasks": {
@@ -13,6 +14,9 @@
     },
     "lint": {
       "outputs": []
+    },
+      "format": {
+      "dependsOn": ["^format"]
     },
     "typecheck": {
       "dependsOn": ["^typecheck"],
