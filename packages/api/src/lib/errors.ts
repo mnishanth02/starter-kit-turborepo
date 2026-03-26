@@ -31,9 +31,13 @@ export function validationError(
 }
 
 export function globalErrorHandler(err: Error, c: Context) {
-  // Honour Hono's own HTTPException (thrown by built-in middleware)
+  // Map Hono's HTTPException to our JSON error contract
   if (err instanceof HTTPException) {
-    return err.getResponse();
+    const status = err.status as ContentfulStatusCode;
+    const code =
+      (Object.entries(STATUS_MAP).find(([, s]) => s === status)?.[0] as ErrorCode) ??
+      ErrorCode.INTERNAL_ERROR;
+    return apiError(c, code, err.message || 'Request failed');
   }
 
   const isDev = process.env.NODE_ENV === 'development';
