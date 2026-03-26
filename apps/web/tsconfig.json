@@ -1,17 +1,13 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "@starter/typescript-config/nextjs",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"]
     },
-    "jsx": "preserve",
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "isolatedModules": true,
-    "incremental": true
+    "isolatedModules": true
   },
   "include": [
     "next-env.d.ts",

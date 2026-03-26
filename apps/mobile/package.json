@@ -45,6 +45,7 @@
   },
   "devDependencies": {
     "@starter/api": "workspace:*",
+    "@starter/typescript-config": "workspace:*",
     "@types/react": "~19.2.14",
     "typescript": "~5.9.2"
   },

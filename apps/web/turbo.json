@@ -1,0 +1,10 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "outputs": [".next/**", "!.next/cache/**"],
+      "inputs": ["$TURBO_DEFAULT$", ".env", ".env.local", ".env.production.local"],
+      "env": ["CLERK_SECRET_KEY", "CLERK_WEBHOOK_SECRET", "DATABASE_URL"]
+    }
+  }
+}

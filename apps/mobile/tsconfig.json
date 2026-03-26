@@ -1,7 +1,6 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "@starter/typescript-config/react-native",
   "compilerOptions": {
-    "jsx": "react-jsx",
     "paths": {
       "@/*": ["./*"]
     },

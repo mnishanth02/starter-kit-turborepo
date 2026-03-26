@@ -21,6 +21,7 @@
     "hono": "^4.12.9"
   },
   "devDependencies": {
+    "@starter/typescript-config": "workspace:*",
     "typescript": "^6.0.2"
   }
 }

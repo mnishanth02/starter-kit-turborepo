@@ -12,8 +12,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "incremental": true
+    "noEmit": true
   },
   "exclude": ["node_modules", "dist", ".next", ".expo", ".turbo"]
 }

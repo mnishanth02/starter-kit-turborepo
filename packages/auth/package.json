@@ -23,6 +23,7 @@
     "@starter/validation": "workspace:*"
   },
   "devDependencies": {
+    "@starter/typescript-config": "workspace:*",
     "typescript": "^6.0.2"
   }
 }

@@ -108,6 +108,9 @@ importers:
       '@starter/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@starter/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
       '@types/react':
         specifier: ~19.2.14
         version: 19.2.14
@@ -145,6 +148,9 @@ importers:
         specifier: 19.2.4
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@starter/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
       '@tailwindcss/postcss':
         specifier: ^4.2.2
         version: 4.2.2
@@ -182,6 +188,9 @@ importers:
         specifier: ^4.12.9
         version: 4.12.9
     devDependencies:
+      '@starter/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
@@ -198,6 +207,9 @@ importers:
         specifier: workspace:*
         version: link:../validation
     devDependencies:
+      '@starter/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
@@ -214,6 +226,9 @@ importers:
         specifier: ^0.45.1
         version: 0.45.1(@neondatabase/serverless@1.0.2)(@types/pg@8.20.0)
     devDependencies:
+      '@starter/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
@@ -224,12 +239,17 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
+  packages/typescript-config: {}
+
   packages/validation:
     dependencies:
       zod:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      '@starter/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
@@ -7962,7 +7982,7 @@ snapshots:
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 25.5.0
 
   '@types/graceful-fs@4.1.9':
     dependencies:
@@ -8012,7 +8032,7 @@ snapshots:
 
   '@types/ws@7.4.7':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 25.5.0
 
   '@types/ws@8.18.1':
     dependencies:
