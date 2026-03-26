@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Web App
 
-## Getting Started
+This Next.js app runs from `apps/web`, so Next loads env files from this directory.
 
-First, run the development server:
+## Environment setup
+
+Create `apps/web/.env.local` from `apps/web/.env.local.example`.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp apps/web/.env.local.example apps/web/.env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set these values:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `DATABASE_URL`: database connection string for the web app and mounted API.
+- `CLERK_SECRET_KEY`: Clerk secret key for server-side auth.
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk publishable key for the browser.
+- `CORS_ALLOWED_ORIGINS`: optional today, but used by the API when cross-origin clients are involved.
+- `CLERK_WEBHOOK_SECRET`: optional until webhook handling is added.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Start the app
 
-## Learn More
+From the repo root:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm dev:web
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Or from this directory:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm dev
+```
 
-## Deploy on Vercel
+The web app serves the backend on the same origin, so the browser does not need a separate API base URL.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Monorepo env split
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `apps/web/.env.local`: Next.js runtime vars for server and browser.
+- `apps/mobile/.env.local`: Expo runtime vars for the mobile app.
+- `.env.example`: shared variable reference for the repo.

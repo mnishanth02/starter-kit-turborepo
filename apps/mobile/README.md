@@ -1,50 +1,40 @@
-# Welcome to your Expo app 👋
+# Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This Expo app runs from `apps/mobile`, so Expo only loads env files from this directory.
 
-## Get started
+## Environment setup
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Create `apps/mobile/.env.local` from `apps/mobile/.env.local.example`.
 
 ```bash
-npm run reset-project
+cp apps/mobile/.env.local.example apps/mobile/.env.local
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Set these values:
 
-## Learn more
+- `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk publishable key for the mobile client.
+- `EXPO_PUBLIC_API_BASE_URL`: Base URL for the web app backend, for example `http://localhost:3000`.
 
-To learn more about developing your project with Expo, look at the following resources:
+For a physical device on your LAN, `EXPO_PUBLIC_API_BASE_URL` usually needs your machine IP instead of `localhost`, for example `http://192.168.0.217:3000`.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Start the app
 
-## Join the community
+From the repo root:
 
-Join our community of developers creating universal apps.
+```bash
+pnpm dev:mobile
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Or from this directory:
+
+```bash
+pnpm dev
+```
+
+If you change `apps/mobile/.env.local`, stop Expo and start it again.
+
+## Monorepo env split
+
+- `apps/mobile/.env.local`: Expo-only runtime variables.
+- `apps/web/.env.local`: Next.js server and browser variables for the web app.
+- `.env.example`: shared reference file for the whole monorepo, not the file Expo loads.

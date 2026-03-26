@@ -1,6 +1,6 @@
 {
   "extends": "//",
   "files": {
-    "includes": ["!**/.next"]
+    "includes": ["!**/.next", "!next-env.d.ts"]
   }
 }
