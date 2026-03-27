@@ -24,6 +24,58 @@ type Condition =
 
 type SortDescriptor = { type: 'desc'; field: keyof UploadRecord };
 
+class SelectBuilder extends Promise<UploadRecord[]> {
+  private order: SortDescriptor | undefined;
+  private limitValue: number | undefined;
+  private offsetValue = 0;
+  private readonly runQuery: () => UploadRecord[];
+  private readonly sortResults: (
+    input: UploadRecord[],
+    descriptor?: SortDescriptor,
+  ) => UploadRecord[];
+
+  constructor(
+    runQuery: () => UploadRecord[],
+    sortResults: (input: UploadRecord[], descriptor?: SortDescriptor) => UploadRecord[],
+  ) {
+    let resolvePromise!: (value: UploadRecord[]) => void;
+
+    super((resolve) => {
+      resolvePromise = resolve;
+    });
+
+    this.runQuery = runQuery;
+    this.sortResults = sortResults;
+
+    queueMicrotask(() => {
+      resolvePromise(this.execute());
+    });
+  }
+
+  orderBy(descriptor: SortDescriptor) {
+    this.order = descriptor;
+    return this;
+  }
+
+  limit(value: number) {
+    this.limitValue = value;
+    return this;
+  }
+
+  offset(value: number) {
+    this.offsetValue = value;
+    return this;
+  }
+
+  private execute(): UploadRecord[] {
+    let result = this.runQuery();
+    if (this.order) result = this.sortResults(result, this.order);
+    if (this.offsetValue) result = result.slice(this.offsetValue);
+    if (this.limitValue !== undefined) result = result.slice(0, this.limitValue);
+    return result;
+  }
+}
+
 const mockState = vi.hoisted(() => {
   const records = new Map<string, UploadRecord>();
 
@@ -106,16 +158,22 @@ const mockState = vi.hoisted(() => {
     });
   };
 
-  const db = {
-    select: () => ({
-      from: () => ({
-        where: (condition: Condition) => ({
-          limit: async (count: number) => findRecords(condition).slice(0, count),
-          orderBy: async (descriptor: SortDescriptor) =>
-            sortRecords(findRecords(condition), descriptor),
+  // biome-ignore lint/suspicious/noExplicitAny: test mock needs flexible select signature
+  const db: any = {
+    select: (fields?: Record<string, unknown>) => {
+      const isCount = fields !== undefined;
+      return {
+        from: () => ({
+          where: (condition: Condition) => {
+            if (isCount) {
+              return Promise.resolve([{ total: findRecords(condition).length }]);
+            }
+
+            return new SelectBuilder(() => findRecords(condition), sortRecords);
+          },
         }),
-      }),
-    }),
+      };
+    },
     insert: () => ({
       values: async (value: UploadRecord | UploadRecord[]) => {
         const incoming = Array.isArray(value) ? value : [value];
@@ -178,6 +236,7 @@ const mockState = vi.hoisted(() => {
 
 vi.mock('drizzle-orm', () => ({
   and: (...conditions: Condition[]) => ({ type: 'and', conditions }),
+  count: () => '__count__',
   desc: (field: keyof UploadRecord) => ({ type: 'desc', field }),
   eq: (field: keyof UploadRecord, value: unknown) => ({ type: 'eq', field, value }),
   gte: (field: keyof UploadRecord, value: unknown) => ({ type: 'gte', field, value }),
@@ -210,7 +269,7 @@ type UploadSessionResponse = {
 };
 
 type UploadListResponse = {
-  uploads: Array<{
+  data: Array<{
     id: string;
     objectKey: string;
     filename: string;
@@ -220,6 +279,10 @@ type UploadListResponse = {
     createdAt: string;
     updatedAt: string;
   }>;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 };
 
 const testApp = new Hono().basePath('/api');
@@ -275,7 +338,7 @@ describe('upload routes', () => {
     expect(payload).toMatchObject({
       id: expect.any(String),
       objectKey: expect.stringContaining('uploads/user_test_1/'),
-      uploadUrl: expect.stringContaining('/test-bucket/'),
+      uploadUrl: expect.stringContaining('/test-bucket'),
       expiresInSeconds: 300,
     });
 
@@ -496,14 +559,18 @@ describe('upload routes', () => {
     expect(response.status).toBe(200);
     const payload = (await response.json()) as UploadListResponse;
     expect(payload).toMatchObject({
-      uploads: expect.arrayContaining([
+      data: expect.arrayContaining([
         expect.objectContaining({ filename: 'new.png', status: 'pending' }),
         expect.objectContaining({ filename: 'done.png', status: 'complete' }),
       ]),
+      total: 2,
+      page: 1,
+      limit: 20,
+      totalPages: 1,
     });
-    expect(payload.uploads).toHaveLength(2);
-    expect(payload.uploads.map((upload) => upload.filename)).not.toContain('old.png');
-    expect(payload.uploads.map((upload) => upload.filename)).not.toContain('other.png');
+    expect(payload.data).toHaveLength(2);
+    expect(payload.data.map((upload) => upload.filename)).not.toContain('old.png');
+    expect(payload.data.map((upload) => upload.filename)).not.toContain('other.png');
   });
 
   it('deletes upload metadata and the stored object by default', async () => {

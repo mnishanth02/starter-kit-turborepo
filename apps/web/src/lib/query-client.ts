@@ -1,11 +1,11 @@
+import { QUERY_DEFAULTS } from '@starter/validation';
 import { isServer, QueryClient } from '@tanstack/react-query';
 
 function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 60 * 1000,
-        gcTime: 5 * 60 * 1000,
+        ...QUERY_DEFAULTS,
         retry: isServer ? false : 3,
       },
     },

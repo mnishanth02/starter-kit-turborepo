@@ -1,6 +1,11 @@
-import type { CreateProjectInput, UpdateProjectInput } from '@starter/validation';
+import type {
+  CreateProjectInput,
+  PaginatedResponse,
+  UpdateProjectInput,
+} from '@starter/validation';
 import { unwrapResponse } from '@/lib/api-errors';
 import { getApiEnv } from '@/lib/env';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 export type Project = {
   id: string;
@@ -30,27 +35,33 @@ function getHeaders(token?: string | null, hasBody?: boolean): Record<string, st
   };
 }
 
+/** Throws if the Clerk token is null (session expired). */
+function requireToken(token: string | null | undefined): string {
+  if (!token) throw new Error('SESSION_EXPIRED');
+  return token;
+}
+
 export async function listProjects(token?: string | null) {
-  return unwrapResponse<Project[]>(
-    await fetch(buildUrl('/api/projects'), {
-      headers: getHeaders(token),
+  return unwrapResponse<PaginatedResponse<Project>>(
+    await fetchWithTimeout(buildUrl('/api/projects'), {
+      headers: getHeaders(requireToken(token)),
     }),
   );
 }
 
 export async function getProject(id: string, token?: string | null) {
   return unwrapResponse<Project>(
-    await fetch(buildUrl(`/api/projects/${encodePathSegment(id)}`), {
-      headers: getHeaders(token),
+    await fetchWithTimeout(buildUrl(`/api/projects/${encodePathSegment(id)}`), {
+      headers: getHeaders(requireToken(token)),
     }),
   );
 }
 
 export async function createProject(input: CreateProjectInput, token?: string | null) {
   return unwrapResponse<Project>(
-    await fetch(buildUrl('/api/projects'), {
+    await fetchWithTimeout(buildUrl('/api/projects'), {
       method: 'POST',
-      headers: getHeaders(token, true),
+      headers: getHeaders(requireToken(token), true),
       body: JSON.stringify(input),
     }),
   );
@@ -58,18 +69,18 @@ export async function createProject(input: CreateProjectInput, token?: string | 
 
 export async function updateProject(id: string, input: UpdateProjectInput, token?: string | null) {
   return unwrapResponse<Project>(
-    await fetch(buildUrl(`/api/projects/${encodePathSegment(id)}`), {
+    await fetchWithTimeout(buildUrl(`/api/projects/${encodePathSegment(id)}`), {
       method: 'PUT',
-      headers: getHeaders(token, true),
+      headers: getHeaders(requireToken(token), true),
       body: JSON.stringify(input),
     }),
   );
 }
 
 export async function deleteProject(id: string, token?: string | null) {
-  const response = await fetch(buildUrl(`/api/projects/${encodePathSegment(id)}`), {
+  const response = await fetchWithTimeout(buildUrl(`/api/projects/${encodePathSegment(id)}`), {
     method: 'DELETE',
-    headers: getHeaders(token),
+    headers: getHeaders(requireToken(token)),
   });
 
   if (!response.ok) {

@@ -39,18 +39,34 @@ export default function ProjectsTab() {
 
   const projectsQuery = useQuery({
     queryKey: projectsQueryKey,
-    queryFn: async () => listProjects(await getToken()),
+    queryFn: async () => (await listProjects(await getToken())).data,
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => deleteProject(id, await getToken()),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: projectsQueryKey });
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: projectsQueryKey });
+      const previousProjects = queryClient.getQueryData<Project[]>(projectsQueryKey);
+      queryClient.setQueryData<Project[]>(
+        projectsQueryKey,
+        (old) => old?.filter((p) => p.id !== id) ?? [],
+      );
+      return { previousProjects };
     },
-    onError: (error) => {
+    onError: (error, _id, context) => {
+      if (context?.previousProjects) {
+        queryClient.setQueryData(projectsQueryKey, context.previousProjects);
+      }
       const message =
-        error instanceof ApiResponseError ? error.message : 'Could not delete project';
+        error.message === 'SESSION_EXPIRED'
+          ? 'Your session has expired. Please sign in again.'
+          : error instanceof ApiResponseError
+            ? error.message
+            : 'Could not delete project';
       Alert.alert('Delete failed', message);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: projectsQueryKey });
     },
   });
 
@@ -130,16 +146,17 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     gap: 12,
-    padding: 18,
+    padding: 20,
   },
   cardHeader: {
     alignItems: 'flex-start',
     flexDirection: 'row',
+    gap: 12,
     justifyContent: 'space-between',
   },
   cardTitleColumn: {
     flex: 1,
-    gap: 6,
+    gap: 4,
   },
   deleteButton: {
     alignSelf: 'flex-start',

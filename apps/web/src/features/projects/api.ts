@@ -1,4 +1,8 @@
-import type { CreateProjectInput, UpdateProjectInput } from '@starter/validation';
+import type {
+  CreateProjectInput,
+  PaginatedResponse,
+  UpdateProjectInput,
+} from '@starter/validation';
 import { getApiBaseUrl } from '@/lib/api-client';
 import { unwrapResponse } from '@/lib/api-error';
 
@@ -41,7 +45,7 @@ async function request<T>(path: string, init?: RequestInit) {
 }
 
 export async function listProjects(headers?: HeadersInit) {
-  return request<Project[]>('/api/projects', { headers });
+  return request<PaginatedResponse<Project>>('/api/projects', { headers });
 }
 
 export async function getProject(id: string, headers?: HeadersInit) {

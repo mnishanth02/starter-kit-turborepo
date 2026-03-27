@@ -10,6 +10,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useId } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ApiResponseError } from '@/lib/api-error';
@@ -54,14 +55,19 @@ function ProjectFormFields({
   register: ReturnType<typeof useForm>['register'];
   showStatus: boolean;
 }) {
+  const fieldId = useId();
+  const nameId = `${fieldId}-name`;
+  const descriptionId = `${fieldId}-description`;
+  const statusId = `${fieldId}-status`;
+
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <label className="text-sm font-medium text-neutral-900" htmlFor="name">
+        <label className="text-sm font-medium text-neutral-900" htmlFor={nameId}>
           Project name
         </label>
         <input
-          id="name"
+          id={nameId}
           className="w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none transition focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
           disabled={isPending}
           placeholder="Acme launch site"
@@ -73,11 +79,11 @@ function ProjectFormFields({
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-neutral-900" htmlFor="description">
+        <label className="text-sm font-medium text-neutral-900" htmlFor={descriptionId}>
           Description
         </label>
         <textarea
-          id="description"
+          id={descriptionId}
           className="min-h-32 w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none transition focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
           disabled={isPending}
           placeholder="What is this project for?"
@@ -94,11 +100,11 @@ function ProjectFormFields({
 
       {showStatus ? (
         <div className="space-y-2">
-          <label className="text-sm font-medium text-neutral-900" htmlFor="status">
+          <label className="text-sm font-medium text-neutral-900" htmlFor={statusId}>
             Status
           </label>
           <select
-            id="status"
+            id={statusId}
             className="w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none transition focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
             disabled={isPending}
             {...register('status')}

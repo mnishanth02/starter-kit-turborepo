@@ -2,7 +2,10 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 
+import { loadDbEnv } from './load-env';
 import * as schema from './schema';
+
+loadDbEnv();
 
 export function isTestEnvironment(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.NODE_ENV === 'test' || env.VITEST === 'true' || env.VITEST === '1';

@@ -4,22 +4,21 @@ import { cors } from 'hono/cors';
 import { apiError, globalErrorHandler } from './lib/errors';
 import { clerkAuthMiddleware } from './middleware/clerk';
 import { requestId } from './middleware/request-id';
+import { cleanupRoute } from './routes/cleanup';
+import { demoRoute } from './routes/demo';
 import { health } from './routes/health';
 import { me } from './routes/me';
 import { projectsRoute } from './routes/projects';
 import { publicRoute } from './routes/public';
 import { uploads } from './routes/uploads';
+import { webhooksRoute } from './routes/webhooks';
 
 const app = new Hono().basePath('/api');
 
-// Global error handler
 app.onError(globalErrorHandler);
 
-// Use c.json() (via apiError) — never c.notFound() — so RPC clients
-// can infer the 404 response type. See https://hono.dev/docs/guides/rpc
 app.notFound((c) => apiError(c, ErrorCode.NOT_FOUND, 'Route not found'));
 
-// Middleware order: request-id → CORS → Clerk auth
 app.use('*', requestId);
 app.use(
   '*',
@@ -48,18 +47,22 @@ app.use('/projects', clerkAuthMiddleware);
 app.use('/projects/*', clerkAuthMiddleware);
 app.use('/uploads', clerkAuthMiddleware);
 app.use('/uploads/*', clerkAuthMiddleware);
+app.use('/demo', clerkAuthMiddleware);
+app.use('/demo/*', clerkAuthMiddleware);
+// /webhooks intentionally has no Clerk middleware — Svix signature verifies the caller
 
-// Routes — chain to capture types for RPC client derivation
 const routes = app
   .route('/health', health)
   .route('/me', me)
   .route('/projects', projectsRoute)
   .route('/public', publicRoute)
-  .route('/uploads', uploads);
+  .route('/uploads', uploads)
+  .route('/demo', demoRoute)
+  .route('/cleanup', cleanupRoute)
+  .route('/webhooks', webhooksRoute);
 
 export type AppType = typeof routes;
 export default app;
 
 export { apiError, validationError } from './lib/errors';
-// Re-export middleware and helpers for route files
 export { requireAuth, requireResourceOwner } from './middleware/auth';

@@ -1,5 +1,6 @@
 import {
   DeleteObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -174,6 +175,15 @@ export async function headObject(key: string): Promise<StoredObjectMetadata | nu
   }
 
   return null;
+}
+
+export async function checkStorage(): Promise<boolean> {
+  try {
+    await getStorageClient().send(new HeadBucketCommand({ Bucket: getStorageBucketName() }));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function resetStorageClientForTests(): void {

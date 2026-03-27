@@ -1,7 +1,8 @@
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { listProjects, projectsQueryKey } from '@/features/projects/api';
-import { ProjectsList } from '@/features/projects/projects-list';
+import { ProjectsList, ProjectsSkeleton } from '@/features/projects/projects-list';
 import { getQueryClient } from '@/lib/query-client';
 import { getServerApiHeaders } from '@/lib/server-api-client';
 
@@ -36,7 +37,9 @@ export default async function ProjectsPage() {
       </section>
 
       <HydrationBoundary state={dehydrate(queryClient)}>
-        <ProjectsList />
+        <Suspense fallback={<ProjectsSkeleton />}>
+          <ProjectsList />
+        </Suspense>
       </HydrationBoundary>
     </div>
   );

@@ -1,4 +1,8 @@
-import type { UploadConfirmInput, UploadSessionRequest } from '@starter/validation';
+import type {
+  PaginatedResponse,
+  UploadConfirmInput,
+  UploadSessionRequest,
+} from '@starter/validation';
 import { getApiBaseUrl } from '@/lib/api-client';
 import { unwrapResponse } from '@/lib/api-error';
 
@@ -48,7 +52,7 @@ async function request<T>(path: string, init?: RequestInit) {
 }
 
 export async function listUploads(headers?: HeadersInit) {
-  return request<{ uploads: UploadRecord[] }>('/api/uploads', { headers });
+  return request<PaginatedResponse<UploadRecord>>('/api/uploads', { headers });
 }
 
 export async function createUploadSession(input: UploadSessionRequest, headers?: HeadersInit) {

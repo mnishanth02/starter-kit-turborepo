@@ -52,15 +52,16 @@ export const clerkAuthMiddleware = createMiddleware(async (c, next) => {
     acceptsToken: 'any',
   });
 
+  const responseHeaders = new Headers(requestState.headers);
   const auth = requestState.toAuth();
   c.set('auth', {
     userId: auth && 'userId' in auth ? auth.userId : null,
-    redirectTo: requestState.headers?.get('location') ?? null,
+    redirectTo: responseHeaders.get('location'),
   });
 
   await next();
 
-  requestState.headers?.forEach((value, key) => {
+  responseHeaders.forEach((value, key) => {
     if (key.toLowerCase() !== 'location') {
       c.header(key, value, { append: true });
     }

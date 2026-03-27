@@ -1,26 +1,26 @@
 import { db, projects } from '@starter/db';
-import { createProjectInput, ErrorCode, updateProjectInput } from '@starter/validation';
-import { eq } from 'drizzle-orm';
+import {
+  createProjectInput,
+  ErrorCode,
+  paginationQuery,
+  updateProjectInput,
+} from '@starter/validation';
+import { count, desc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
 
 import { apiError, validationError } from '../lib/errors';
 import { requireAuth, requireResourceOwner } from '../middleware/auth';
+import { withRateLimit } from '../middleware/ratelimit';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// Extend Hono context variable map so route handlers can read the loaded project
 declare module 'hono' {
   interface ContextVariableMap {
     project: typeof projects.$inferSelect;
   }
 }
 
-/**
- * Middleware: load the project identified by the `:id` route param.
- * Sets `c.get('project')` on success; returns 404 when the project does not exist.
- * Must run after `requireAuth` so the auth context is already populated.
- */
 function loadProject() {
   return createMiddleware(async (c, next) => {
     const id = c.req.param('id');
@@ -42,20 +42,45 @@ function loadProject() {
 const projectsRoute = new Hono()
   .use('*', requireAuth)
 
-  // GET /projects — list current user's projects
+  // GET /projects — list current user's projects (supports ?page=1&limit=20)
   .get('/', async (c) => {
     const auth = c.get('auth');
     if (!auth?.userId) {
       return apiError(c, ErrorCode.UNAUTHORIZED, 'Authentication required');
     }
 
-    const userProjects = await db.select().from(projects).where(eq(projects.userId, auth.userId));
+    const parsedPage = paginationQuery.safeParse({
+      page: c.req.query('page'),
+      limit: c.req.query('limit'),
+    });
+    const { page, limit } = parsedPage.success ? parsedPage.data : { page: 1, limit: 20 };
+    const offset = (page - 1) * limit;
 
-    return c.json(userProjects);
+    const [totalRow] = await db
+      .select({ total: count() })
+      .from(projects)
+      .where(eq(projects.userId, auth.userId));
+
+    const records = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.userId, auth.userId))
+      .orderBy(desc(projects.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const total = totalRow?.total ?? 0;
+    return c.json({
+      data: records,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
   })
 
-  // POST /projects — create a new project for the current user
-  .post('/', async (c) => {
+  // POST /projects — create a new project for the current user (20 req/min)
+  .post('/', withRateLimit('projects:create', 20, '1 m'), async (c) => {
     const auth = c.get('auth');
     if (!auth?.userId) {
       return apiError(c, ErrorCode.UNAUTHORIZED, 'Authentication required');
@@ -85,7 +110,6 @@ const projectsRoute = new Hono()
     return c.json(project, 201);
   })
 
-  // GET /projects/:id — fetch a single project (ownership enforced)
   .get(
     '/:id',
     loadProject(),
@@ -93,7 +117,6 @@ const projectsRoute = new Hono()
     async (c) => c.json(c.get('project')),
   )
 
-  // PUT /projects/:id — update a project (ownership enforced)
   .put(
     '/:id',
     loadProject(),
@@ -139,7 +162,6 @@ const projectsRoute = new Hono()
     },
   )
 
-  // DELETE /projects/:id — delete a project (ownership enforced)
   .delete(
     '/:id',
     loadProject(),

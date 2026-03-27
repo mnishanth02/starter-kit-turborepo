@@ -2,11 +2,31 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { listProjects, projectsQueryKey } from './api';
+import { listProjects, type Project, projectsQueryKey } from './api';
+
+const PROJECT_SKELETON_KEYS = [
+  'project-skeleton-1',
+  'project-skeleton-2',
+  'project-skeleton-3',
+  'project-skeleton-4',
+] as const;
+
+export function ProjectsSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {PROJECT_SKELETON_KEYS.map((key) => (
+        <div
+          className="h-44 animate-pulse rounded-3xl border border-neutral-200 bg-neutral-100"
+          key={key}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function ProjectsList() {
   const {
-    data = [],
+    data: paginatedData,
     error,
     isError,
     isLoading,
@@ -15,6 +35,8 @@ export function ProjectsList() {
     queryKey: projectsQueryKey,
     queryFn: () => listProjects(),
   });
+
+  const data: Project[] = paginatedData?.data ?? [];
 
   if (isError) {
     return (

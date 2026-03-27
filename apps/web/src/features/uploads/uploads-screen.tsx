@@ -9,6 +9,7 @@ import {
   createUploadSession,
   deleteUpload,
   listUploads,
+  type UploadRecord,
   uploadsQueryKey,
 } from './api';
 
@@ -28,7 +29,7 @@ export function UploadsScreen() {
 
   const uploadsQuery = useQuery({
     queryKey: uploadsQueryKey,
-    queryFn: async () => (await listUploads()).uploads,
+    queryFn: async () => (await listUploads()).data,
   });
 
   const uploadMutation = useMutation({
@@ -107,6 +108,8 @@ export function UploadsScreen() {
     },
   });
 
+  const uploads: UploadRecord[] = uploadsQuery.data ?? [];
+
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
@@ -166,8 +169,8 @@ export function UploadsScreen() {
           <div className="rounded-3xl border border-neutral-200 bg-white p-6 text-sm text-neutral-500 shadow-sm">
             Loading uploads…
           </div>
-        ) : uploadsQuery.data?.length ? (
-          uploadsQuery.data.map((upload) => (
+        ) : uploads.length > 0 ? (
+          uploads.map((upload) => (
             <article
               className="flex flex-col gap-4 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between"
               key={upload.id}

@@ -1,6 +1,11 @@
-import type { UploadConfirmInput, UploadSessionRequest } from '@starter/validation';
+import type {
+  PaginatedResponse,
+  UploadConfirmInput,
+  UploadSessionRequest,
+} from '@starter/validation';
 import { unwrapResponse } from '@/lib/api-errors';
 import { getApiEnv } from '@/lib/env';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 export type UploadRecord = {
   id: string;
@@ -37,19 +42,25 @@ function getHeaders(token?: string | null, hasBody?: boolean): Record<string, st
   };
 }
 
+/** Throws if the Clerk token is null (session expired). */
+function requireToken(token: string | null | undefined): string {
+  if (!token) throw new Error('SESSION_EXPIRED');
+  return token;
+}
+
 export async function listUploads(token?: string | null) {
-  return unwrapResponse<{ uploads: UploadRecord[] }>(
-    await fetch(buildUrl('/api/uploads'), {
-      headers: getHeaders(token),
+  return unwrapResponse<PaginatedResponse<UploadRecord>>(
+    await fetchWithTimeout(buildUrl('/api/uploads'), {
+      headers: getHeaders(requireToken(token)),
     }),
   );
 }
 
 export async function createUploadSession(input: UploadSessionRequest, token?: string | null) {
   return unwrapResponse<UploadSession>(
-    await fetch(buildUrl('/api/uploads/session'), {
+    await fetchWithTimeout(buildUrl('/api/uploads/session'), {
       method: 'POST',
-      headers: getHeaders(token, true),
+      headers: getHeaders(requireToken(token), true),
       body: JSON.stringify(input),
     }),
   );
@@ -57,20 +68,20 @@ export async function createUploadSession(input: UploadSessionRequest, token?: s
 
 export async function confirmUpload(id: string, input: UploadConfirmInput, token?: string | null) {
   return unwrapResponse<UploadRecord>(
-    await fetch(buildUrl(`/api/uploads/${encodePathSegment(id)}/confirm`), {
+    await fetchWithTimeout(buildUrl(`/api/uploads/${encodePathSegment(id)}/confirm`), {
       method: 'POST',
-      headers: getHeaders(token, true),
+      headers: getHeaders(requireToken(token), true),
       body: JSON.stringify(input),
     }),
   );
 }
 
 export async function deleteUpload(id: string, token?: string | null) {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(`/api/uploads/${encodePathSegment(id)}?deleteObject=true`),
     {
       method: 'DELETE',
-      headers: getHeaders(token),
+      headers: getHeaders(requireToken(token)),
     },
   );
 

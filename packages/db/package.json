@@ -15,7 +15,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "biome check .",
+    "lint": "pnpm exec biome check .",
     "test": "vitest run --config ./vitest.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -27,6 +27,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
     "@starter/validation": "workspace:*",
+    "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1"
   },
   "devDependencies": {

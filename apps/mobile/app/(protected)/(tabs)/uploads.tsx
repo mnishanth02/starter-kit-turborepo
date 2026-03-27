@@ -43,7 +43,7 @@ export default function UploadsTab() {
 
   const uploadsQuery = useQuery({
     queryKey: uploadsQueryKey,
-    queryFn: async () => (await listUploads(await getToken())).uploads,
+    queryFn: async () => (await listUploads(await getToken())).data,
   });
 
   const uploadMutation = useMutation({

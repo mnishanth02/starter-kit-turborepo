@@ -1,6 +1,11 @@
 import { db, uploads as uploadsTable } from '@starter/db';
-import { ErrorCode, uploadConfirmInput, uploadSessionRequest } from '@starter/validation';
-import { and, desc, eq, gte, ne, or } from 'drizzle-orm';
+import {
+  ErrorCode,
+  paginationQuery,
+  uploadConfirmInput,
+  uploadSessionRequest,
+} from '@starter/validation';
+import { and, count, desc, eq, gte, ne, or } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 
@@ -12,6 +17,7 @@ import {
   SIGNED_UPLOAD_TTL_SECONDS,
 } from '../lib/storage';
 import { requireAuth } from '../middleware/auth';
+import { withRateLimit } from '../middleware/ratelimit';
 
 export const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024;
 const STALE_PENDING_WINDOW_MS = 60 * 60 * 1000;
@@ -40,7 +46,8 @@ async function parseJson(c: Context) {
 
 const uploads = new Hono()
   .use('*', requireAuth)
-  .post('/session', async (c) => {
+  // POST /uploads/session — initiate an upload (10 req/min)
+  .post('/session', withRateLimit('uploads:session', 10, '1 m'), async (c) => {
     const auth = c.get('auth');
     if (!auth?.userId) {
       return apiError(c, ErrorCode.UNAUTHORIZED, 'Authentication required');
@@ -203,26 +210,39 @@ const uploads = new Hono()
       updatedAt: confirmedUpload.updatedAt,
     });
   })
+  // GET /uploads — list current user's uploads (supports ?page=1&limit=20)
   .get('/', async (c) => {
     const auth = c.get('auth');
     if (!auth?.userId) {
       return apiError(c, ErrorCode.UNAUTHORIZED, 'Authentication required');
     }
 
+    const parsedPage = paginationQuery.safeParse({
+      page: c.req.query('page'),
+      limit: c.req.query('limit'),
+    });
+    const { page, limit } = parsedPage.success ? parsedPage.data : { page: 1, limit: 20 };
+    const offset = (page - 1) * limit;
+
     const stalePendingCutoff = new Date(Date.now() - STALE_PENDING_WINDOW_MS);
+    const whereClause = and(
+      eq(uploadsTable.userId, auth.userId),
+      or(ne(uploadsTable.status, 'pending'), gte(uploadsTable.createdAt, stalePendingCutoff)),
+    );
+
+    const [totalRow] = await db.select({ total: count() }).from(uploadsTable).where(whereClause);
+
     const records = await db
       .select()
       .from(uploadsTable)
-      .where(
-        and(
-          eq(uploadsTable.userId, auth.userId),
-          or(ne(uploadsTable.status, 'pending'), gte(uploadsTable.createdAt, stalePendingCutoff)),
-        ),
-      )
-      .orderBy(desc(uploadsTable.createdAt));
+      .where(whereClause)
+      .orderBy(desc(uploadsTable.createdAt))
+      .limit(limit)
+      .offset(offset);
 
+    const total = totalRow?.total ?? 0;
     return c.json({
-      uploads: records.map((record) => ({
+      data: records.map((record) => ({
         id: record.id,
         objectKey: record.objectKey,
         filename: record.filename,
@@ -232,6 +252,10 @@ const uploads = new Hono()
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
       })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     });
   })
   .delete('/:id', async (c) => {

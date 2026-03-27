@@ -10,7 +10,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check ."
+    "lint": "pnpm exec biome check ."
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.19.31",
