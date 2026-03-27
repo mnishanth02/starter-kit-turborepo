@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint, Typecheck, Test & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      CI: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit & integration tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      # Playwright E2E requires secrets (DATABASE_URL, CLERK_SECRET_KEY, etc.)
+      # Configure these in your repo's GitHub Actions secrets to enable E2E in CI.
+      - name: Install Playwright browsers
+        if: ${{ secrets.DATABASE_URL != '' }}
+        run: cd apps/web && pnpm exec playwright install --with-deps chromium
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Playwright E2E tests
+        if: ${{ secrets.DATABASE_URL != '' }}
+        run: cd apps/web && pnpm exec playwright test
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          CORS_ALLOWED_ORIGINS: http://localhost:3000
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/test-results/
+          retention-days: 7

@@ -1,0 +1,13 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "outputs": [".next/**", "!.next/cache/**"],
+      "inputs": ["$TURBO_DEFAULT$", ".env", ".env.local", ".env.production.local"],
+      "env": ["CLERK_*", "CORS_ALLOWED_ORIGINS", "CRON_SECRET", "DATABASE_URL", "UPSTASH_*", "CLOUDFLARE_*", "R2_*"]
+    },
+    "test": {
+      "extends": false
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "starter-kit",
+  "private": true,
+  "packageManager": "pnpm@10.30.1",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:web": "turbo dev --filter=@starter/web",
+    "dev:mobile": "turbo dev --filter=@starter/mobile",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "format": "pnpm exec biome format --write .",
+    "format:check": "pnpm exec biome format .",
+    "check": "pnpm exec biome check --write .",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "test:unit": "vitest run --config vitest.workspace.ts",
+    "test:watch": "vitest --config vitest.workspace.ts",
+    "test:web": "pnpm --filter @starter/web test:e2e",
+    "test:mobile": "pnpm --filter @starter/mobile test",
+    "update": "pnpm up -r --latest",
+    "db:generate": "pnpm --filter @starter/db db:generate",
+    "db:migrate": "pnpm --filter @starter/db db:migrate",
+    "db:push": "pnpm --filter @starter/db db:push",
+    "db:studio": "pnpm --filter @starter/db db:studio",
+    "db:seed": "pnpm --filter @starter/db db:seed",
+    "db:reset": "pnpm --filter @starter/db db:reset",
+    "db:cleanup": "pnpm --filter @starter/db db:cleanup",
+    "clean": "rm -rf node_modules .turbo apps/*/node_modules apps/*/.next apps/*/.expo packages/*/node_modules packages/*/dist && find . -name '*.tsbuildinfo' -delete"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.9",
+    "turbo": "2.8.20",
+    "vitest": "^3.2.4"
+  }
+}

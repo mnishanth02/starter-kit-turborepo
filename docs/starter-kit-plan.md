@@ -14,8 +14,8 @@ The goal of the starter is to remove repeated setup work while keeping the archi
 - one Next.js web app as the main deployment boundary
 - one integrated Hono backend mounted inside that web app
 - one Expo mobile app consuming the same typed backend via Hono RPC
-- one shared TanStack Query pattern for client-side server state across web and mobile
-- shared packages for auth, database, validation, and typed API access
+- one TanStack Query pattern for client-side server state across web and mobile
+- shared packages for auth, database, and validation
 - production-ready defaults for code quality, testing, CI, migrations, and deployment
 
 The starter should be reusable across many app types. It must not hard-code Alloy-specific domain behavior.
@@ -41,7 +41,7 @@ The starter will use the following stack and scope.
 - code quality: Biome 2.x
 - web hosting: Vercel
 - mobile app: Expo SDK 55 + Expo Router v7
-- runtime: Node.js 20.9+ LTS (required by Next.js 16)
+- runtime: Node.js 20.19+ LTS (required by both Next.js 16 and Expo SDK 55)
 
 ### 2.2 Locked Scope Decisions
 
@@ -92,8 +92,8 @@ Web and mobile should share:
 - typed API access via Hono RPC
 - validation schemas
 - auth semantics
-- query-key conventions and typed client helpers where practical
-- shared design tokens (via `tokens.json`)
+- query-key conventions
+- shared design language — web and mobile define themes in their native format (`apps/web` in CSS custom properties, `apps/mobile` in a TypeScript theme file) following the same color and spacing conventions
 - feature boundaries
 
 Web and mobile should not pretend to share the same component primitives.
@@ -154,12 +154,8 @@ The example domain must be isolated so a cloned app can delete it cleanly.
 |  |- api/
 |  |- auth/
 |  |- db/
-|  |- query/
 |  |- validation/
-|  |- web-ui/
-|  |- mobile-ui/
 |- docs/
-|- tokens.json
 |- package.json
 |- pnpm-workspace.yaml
 |- turbo.json
@@ -167,8 +163,11 @@ The example domain must be isolated so a cloned app can delete it cleanly.
 |- biome.json
 |- .npmrc
 |- .env.example
+|- .gitignore
 |- .github/workflows/ci.yml
 ```
+
+The `.gitignore` must cover: `.env`, `.env.local`, `node_modules/`, `.next/`, `.expo/`, `.turbo/`, `*.tsbuildinfo`, `dist/`, `drizzle/meta/`, and platform-specific build artifacts.
 
 ### 5.1 Package Dependency Rules
 
@@ -179,21 +178,16 @@ packages/validation → (no internal deps — leaf package)
 packages/db         → packages/validation
 packages/auth       → packages/db, packages/validation
 packages/api        → packages/auth, packages/db, packages/validation
-packages/query      → packages/api (types only via Hono RPC — no runtime server code)
-packages/web-ui     → (no internal deps — reads tokens.json)
-packages/mobile-ui  → (no internal deps — reads tokens.json)
-apps/web            → packages/api, packages/auth, packages/query, packages/web-ui, packages/validation
-apps/mobile         → packages/auth, packages/query, packages/mobile-ui, packages/validation
+apps/web            → packages/api, packages/auth, packages/validation
+apps/mobile         → packages/auth, packages/validation
 ```
 
 Rules:
 
 - no circular dependencies allowed
-- `packages/query` imports only the Hono app **type** from `packages/api` for RPC client derivation — it must not import runtime server code
 - `packages/api` is server-only — must not be imported by `apps/mobile`
 - `packages/db` is server-only — must not be imported by client packages or `apps/mobile`
 - environment validation is handled per-app in `apps/web/lib/env.ts` and `apps/mobile/lib/env.ts` — not shared
-- design tokens live in `tokens.json` at the repo root and are consumed by `packages/web-ui` and `packages/mobile-ui` independently
 - enforcement: use TypeScript `package.json` `exports` field to expose only allowed entrypoints per package
 
 ### 5.2 Monorepo Tooling Configuration
@@ -202,10 +196,15 @@ Rules:
 - Turborepo `turbo.json` must define the task pipeline with explicit `dependsOn`, `inputs`, and `outputs` for each task (`build`, `lint`, `typecheck`, `test`, `dev`)
 - Metro bundler auto-configures for monorepos since Expo SDK 52. Manual `watchFolders` / `nodeModulesPaths` setup is no longer required in most cases. Run `npx expo start --clear` after initial setup to flush any stale Metro cache.
 - pnpm's default isolated hoisting strategy (symlinks into `.pnpm`) causes Metro resolution failures. The repo root must include an `.npmrc` file with `node-linker=hoisted` to force flat installation. Without this, Expo will fail to resolve workspace packages on first run.
-- Hono's `hono/client` subpath export is not resolvable by Metro without explicit configuration. `apps/mobile/metro.config.js` must add a custom `resolveRequest` override and enable `unstable_enablePackageExports`:
+- Hono's `hono/client` subpath export may not resolve in Metro without explicit configuration. In `apps/mobile/metro.config.js`, enable package exports support:
 
 ```js
 config.resolver.unstable_enablePackageExports = true;
+```
+
+If `hono/client` still fails to resolve after enabling package exports, add a targeted `resolveRequest` override:
+
+```js
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'hono/client') {
     return {
@@ -216,9 +215,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 ```
-
-Without this, `packages/query` using `hc` from `hono/client` will throw a module-not-found error on every Expo startup.
-- TypeScript must use project references (`composite: true` in each package `tsconfig.json`) for incremental builds and correct IDE resolution. Path aliases via `tsconfig.base.json` `paths` field provide import convenience. Both are required.
+- TypeScript uses `tsconfig.base.json` with shared compiler options and path aliases. Each package and app extends the base config. The base config must set `moduleResolution: "bundler"` to ensure TypeScript respects `package.json` `exports` maps (required for package boundary enforcement in §5.1). Project references (`composite: true`) can be added later if incremental build performance becomes a concern — they are not required for the initial starter.
 
 ## 6. App Responsibilities
 
@@ -255,7 +252,7 @@ Responsibilities:
 - host the Expo application
 - consume the same typed backend via Hono RPC
 - use TanStack Query as the default server-state layer against the typed backend
-- implement token-based mobile auth using secure storage
+- implement mobile auth using `expoClient` with secure session storage
 - provide native screens for auth, CRUD, and uploads
 - demonstrate platform-specific file selection while preserving the same backend upload flow
 
@@ -283,23 +280,17 @@ Responsibilities:
 
 This package is server-only.
 
-### 7.2 `packages/query`
+### 7.2 API Client and Query Hooks
 
-Responsibilities:
+The Hono RPC client (`hc` from `hono/client`) and TanStack Query hooks live in each app, not in a shared package:
 
-- define shared query-key factories for web and mobile
-- define shared TanStack Query defaults where they can remain platform-safe
-- expose typed query and mutation hooks that call the backend
-- use Hono RPC client (`hc` from `hono/client`) to derive typed fetch functions from the Hono app type exported by `packages/api`
-- accept a platform-specific configuration object at initialization that provides: base URL, auth header attachment strategy (cookies for web, Bearer token for mobile), and request timeout
+- each app creates its own typed `hc()` client in `lib/api-client.ts` using a type-only import of the Hono app type from `packages/api`
+- query-key factories (shared string constants) live in `packages/validation` alongside the schemas they correspond to
+- TanStack Query hooks are defined in each app's `features/` directories, colocated with the screens that use them
+- `QueryClient` instantiation and `QueryClientProvider` wrapping live in each app's root layout
+- use `gcTime` (not `cacheTime` — renamed in TanStack Query v5) for all cache lifetime configuration
 
-Important rules:
-
-- keep this package client-safe; it must not import Hono server modules, Drizzle clients, or other Node-only code
-- the Hono RPC type is imported from `packages/api` as a **type-only** import — this pulls in the route type definitions without bundling runtime server code
-- web and mobile must each provide their own auth strategy via configuration, not hard-coded in this package
-- `QueryClient` instantiation and `QueryClientProvider` wrapping must live in each app's root (`apps/web` and `apps/mobile`), not in this package — this package exports hooks and query-key factories only. Placing `QueryClient` here causes "No QueryClient set" runtime errors.
-- use `gcTime` (not `cacheTime` — renamed in TanStack Query v5) for all cache lifetime configuration in this package.
+This avoids a shared package that would need platform-specific auth configuration, fight with Better Auth's fetch interceptors, and require Metro resolution hacks for `hono/client`.
 
 ### 7.3 `packages/auth`
 
@@ -315,7 +306,7 @@ Important rules:
 - expose two distinct entrypoints via `package.json` `exports` map:
   - `@starter/auth/server` — Better Auth configuration, session verification, server-side helpers (Node-only)
   - `@starter/auth/client` — client-safe auth utilities, session types, auth state hooks
-- additionally expose `@starter/auth/mobile` — mobile-specific helpers that wrap `@better-auth/expo` (the official Expo integration package). This provides the `expoClient` plugin, session caching via `expo-secure-store`, and Bearer header attachment. Do not re-implement this from scratch; use `@better-auth/expo` as the foundation.
+- additionally expose `@starter/auth/mobile` — mobile-specific helpers that wrap `@better-auth/expo` (the official Expo integration package). This provides the `expoClient` plugin, session caching via `expo-secure-store`, and automatic session header injection. Do not re-implement this from scratch; use `@better-auth/expo` as the foundation.
 - the `server` entrypoint must never be imported by `apps/mobile` or any client-safe package
 - the `client` entrypoint must be safe to import from both web and mobile
 - known issue: `@better-auth/expo` bundles server and client code together (upstream issue #7603). If this causes React Native deps to leak into the Node backend, wrap it in a re-export shim at the `packages/auth` boundary rather than importing the package directly in server code.
@@ -345,26 +336,14 @@ Important rule:
 
 - one logical contract should have one schema path
 
-### 7.6 `packages/web-ui`
+### 7.6 UI Components
 
-Responsibilities:
+UI components live inside each app rather than in shared packages:
 
-- host shadcn/ui components
-- host web-specific form wrappers
-- host shared web layouts and component primitives
+- `apps/web/components/` — hosts shadcn/ui components, web form wrappers, layouts, and component primitives
+- `apps/mobile/src/components/` — hosts React Native component primitives, mobile form inputs, layouts, and navigation shell components
 
-This package is web-only.
-
-### 7.7 `packages/mobile-ui`
-
-Responsibilities:
-
-- host React Native component primitives for the mobile app
-- host mobile-specific form input components
-- host shared mobile layouts and navigation shell components
-- provide platform-consistent styling using design tokens from `tokens.json`
-
-This package is mobile-only. It must not import DOM components or web-specific libraries.
+This is intentional: web and mobile do not share UI components (§4.2). Single-consumer packages add configuration overhead (package.json, tsconfig, exports map, Turborepo config) without enabling reuse. If a future app needs to share web components, extract a package at that time.
 
 ## 8. Example Feature Set
 
@@ -432,19 +411,29 @@ Required behavior:
 - protected web pages use session-aware server logic
 - protected API procedures enforce authenticated context
 
+### 9.1.1 Session Security Defaults
+
+Better Auth session cookies must be configured with:
+
+- `httpOnly: true` — prevents JavaScript access to session cookies
+- `secure: true` in production — cookies only sent over HTTPS
+- `sameSite: 'lax'` — primary CSRF defense (see §9.5)
+- session TTL: 7 days (configurable)
+- idle timeout: 24 hours of inactivity (configurable)
+
+These defaults must be set in the Better Auth server configuration in `packages/auth`.
+
 ### 9.2 Mobile Auth
 
-Mobile must not depend on browser cookies.
+Mobile must not depend on browser cookies stored in a browser cookie jar.
 
 Required behavior:
 
-- use `@better-auth/expo` with the `expoClient` plugin — this handles session caching in `expo-secure-store`, client initialization, and auth state persistence across app restarts. Do not implement this layer from scratch.
-- mobile sign-in receives token-based credentials via the Bearer plugin. Better Auth must have the Bearer plugin enabled on the server.
-- mobile stores auth state in `expo-secure-store` (handled by `expoClient`)
-- a shared fetch interceptor (configured in `packages/query` initialization) attaches the Bearer token automatically and attempts one refresh on `401` before failing
-- concurrent refresh attempts must be serialized through a mutex
-- token refresh and logout are explicit and tested
-- the Expo app scheme must be registered in `app.config.ts` and added to `trustedOrigins` in the Better Auth server config. Without this, mobile auth callbacks fail silently. For development use `"exp://**"`; for production use the registered app scheme (e.g. `"myapp://**"`).
+- use `@better-auth/expo` with the `expoClient` plugin — this handles session storage in `expo-secure-store`, automatic header injection, and auth state persistence across app restarts. Do not implement this layer from scratch.
+- `expoClient` uses cookie-based session auth (same as web) but stores session cookies in `expo-secure-store` instead of browser cookie storage. It automatically attaches the session cookie to outgoing requests.
+- mobile sign-in and sign-out flow through the same Better Auth endpoints as web — the server does not need separate mobile-specific auth logic
+- the Expo app scheme must be registered in `app.config.ts` and added to `trustedOrigins` in the Better Auth server config. Without this, mobile auth callbacks fail silently. For development use `"exp://**"`; for production use the registered app scheme (e.g. `"myapp://**"`)
+- logout and session expiry must be tested explicitly
 
 Known issue: auth persistence (#4570) — verify that `expoClient` SecureStore caching is enabled and confirmed working before building any auth-dependent screens.
 
@@ -459,16 +448,18 @@ Required registration order in `packages/api`:
 3. Session injection middleware — sets `c.var.user` and `c.var.session` from the validated session
 4. All other route groups — `projects`, `uploads`, `public`, etc.
 
-CORS configuration must explicitly include `User-Agent` in `allowHeaders`. Better Auth v1.4.x automatically adds a `User-Agent` header to outgoing auth requests, and standard CORS configs that omit it will cause preflight failures:
+CORS configuration must use the `CORS_ALLOWED_ORIGINS` environment variable (§17.1) instead of hardcoded origins:
 
 ```ts
 cors({
-  origin: ['http://localhost:3000', 'exp://**'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'User-Agent'],
+  origin: process.env.CORS_ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   allowMethods: ['POST', 'GET', 'OPTIONS'],
   credentials: true,
 })
 ```
+
+Note: `CORS_ALLOWED_ORIGINS` controls browser-enforced CORS policy. Better Auth's `trustedOrigins` (configured in the auth server setup) is a separate concern — it controls which redirect URIs are allowed for auth callbacks. The Expo app scheme (`exp://**` or `myapp://**`) goes in `trustedOrigins`, not in CORS origins. Native mobile HTTP clients do not enforce CORS.
 
 ### 9.4 Main Auth Risk
 
@@ -485,12 +476,12 @@ Because of that, the first technical spike in implementation should prove:
 
 The web app uses cookie-based session auth, which makes state-mutating endpoints vulnerable to cross-site request forgery.
 
-Required mitigation:
+Required mitigation (defense in depth):
 
-- all `POST`, `PUT`, `PATCH`, and `DELETE` endpoints in the Hono API must require a custom header (`X-Requested-With: XMLHttpRequest` or equivalent)
-- browser-initiated requests from the web app must include this header automatically via the fetch client configuration
-- mobile requests already use Bearer token auth, which is not vulnerable to CSRF
-- the Hono middleware must reject cookie-authenticated requests that lack the custom header with a `403 FORBIDDEN` response
+- **Primary: SameSite cookies** — Better Auth session cookies must set `SameSite=Lax` (or `Strict`) and `Secure=true` in production. This prevents browsers from sending cookies on cross-origin requests.
+- **Secondary: Origin/Host validation** — the Hono middleware must verify that the `Origin` header (or `Referer` if Origin is absent) matches the expected deployment origin for all cookie-authenticated state-mutating requests. Reject mismatched origins with `403 FORBIDDEN`.
+- **Additional: custom header** — all `POST`, `PUT`, `PATCH`, and `DELETE` requests from the web app must include `X-Requested-With: XMLHttpRequest`. The middleware rejects cookie-authenticated requests missing this header.
+- mobile requests use session cookies injected by `expoClient` but are not vulnerable to CSRF because native HTTP clients do not follow browser same-origin policy
 
 This approach is preferred over CSRF tokens because it is stateless and works naturally with the single-origin deployment model.
 
@@ -502,7 +493,7 @@ Use Neon Postgres with Drizzle.
 
 Minimum starter tables:
 
-- Better Auth tables (managed by Better Auth)
+- Better Auth tables — created and managed by Better Auth's migration system. Reference these tables in the Drizzle schema file with `{ ...betterAuthSchema }` for TypeScript type generation and relation definitions, but do not generate Drizzle migrations for them. Better Auth owns their structure.
 - `projects` — id, user_id, name, description, status, timestamps
 - `uploads` — id, user_id, object_key, filename, content_type, size_bytes, status, timestamps
 
@@ -514,30 +505,15 @@ Minimum starter tables:
 
 ### 10.3 Connection Strategy
 
-Neon Postgres on Vercel requires explicit connection management. There are two strategies depending on the Vercel compute model in use.
+Use `pg` (node-postgres) with a standard connection pool. Create the pool once at module scope in `packages/db` using the Neon pooler endpoint (`-pooler` suffix in the connection string).
 
-**Strategy A — Vercel Fluid Compute (recommended for 2026):**
+On Vercel Fluid Compute (the recommended 2026 deployment model), the Node.js process stays warm across invocations. A `pg.Pool` created at module scope persists automatically — no special attachment API is needed.
 
-Vercel Fluid Compute allows connections to persist across warm function invocations. This eliminates the ~8 roundtrip setup cost of HTTP-based connections.
+For local development, the same `pg.Pool` connects to a Neon dev branch or local Postgres instance.
 
-- use the standard `pg` (node-postgres) driver
-- use `attachDatabasePool` helper from `@vercel/postgres` or the `neon` package to attach a pool that persists across hot invocations
-- use the Neon pooler endpoint (`-pooler` suffix) as the connection string
-- the database client in `packages/db` creates the pool once at module load time; Vercel manages lifecycle
+`DATABASE_URL` in `.env.example` must document the pooled connection string format and note that the `-pooler` suffix is required for production.
 
-**Strategy B — Classic serverless fallback:**
-
-If the deployment environment does not support persistent connections (e.g. edge functions, Cloudflare Workers):
-
-- use `@neondatabase/serverless` with HTTP transport for single-query request patterns
-- use the Neon pooler endpoint for connection pooling
-- create connections per-request — do not hold a pool reference across invocations
-
-**Local development:**
-
-- a standard `pg` connection to a Neon dev branch or local Postgres is acceptable
-
-`DATABASE_URL` in `.env.example` must document both pooled and direct connection string formats, and note which strategy applies to each environment.
+If a future deployment target requires edge runtime or HTTP-only transport (e.g., Cloudflare Workers), replace `pg.Pool` with `@neondatabase/serverless` HTTP transport at that time.
 
 ## 11. Backend Plan
 
@@ -553,6 +529,28 @@ The starter should define at least these route groups:
 - `uploads`
 - `public`
 
+The `health` route must check database connectivity (e.g., `SELECT 1`) and return:
+- `200 OK` with `{ status: "ok", db: true, timestamp: "<ISO>" }` when healthy
+- `503 Service Unavailable` with `{ status: "degraded", db: false, timestamp: "<ISO>" }` when the database is unreachable
+
+### 11.1.1 Hono Mounting in Next.js
+
+The Hono app is bridged to Next.js route handlers using the `handle` function from `hono/vercel`:
+
+```ts
+// apps/web/app/api/[[...route]]/route.ts
+import { handle } from 'hono/vercel'
+import { app } from '@starter/api'
+
+export const GET = handle(app)
+export const POST = handle(app)
+export const PUT = handle(app)
+export const PATCH = handle(app)
+export const DELETE = handle(app)
+```
+
+This is the single integration point between Hono and Next.js. All API logic lives in `packages/api`; this file only bridges it.
+
 ### 11.2 Response and Error Rules
 
 - response shapes should be typed and predictable
@@ -560,13 +558,30 @@ The starter should define at least these route groups:
 - unexpected errors return safe generic responses while being logged
 - use a small stable error code set: `UNAUTHORIZED`, `FORBIDDEN`, `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`, `INTERNAL_ERROR`
 
-### 11.3 Structured Logging
+### 11.2.1 Authorization Helpers
 
-The starter must include a minimal structured logging layer using `pino`. Every request gets a unique ID propagated through Hono context. Errors include stack traces in development, safe summaries in production.
+Beyond authentication (verifying identity), the starter must include reusable authorization helpers:
 
-### 11.4 Response Envelope
+- `requireAuth` middleware — rejects unauthenticated requests with `401 UNAUTHORIZED`. Applied to all protected route groups.
+- `requireResourceOwner(resourceUserId)` helper — compares the authenticated user's ID against the resource owner. Returns `403 FORBIDDEN` if they don't match. Used in update and delete handlers to enforce user-scoped access.
 
-All API responses follow a simple envelope: `{ success, data }` on success, `{ success, error: { code, message } }` on failure. Define the envelope type in `packages/validation` and use it consistently across route handlers.
+These helpers live in `packages/api` and are demonstrated in the projects and uploads route groups.
+
+### 11.3 Request Logging
+
+The starter includes a minimal request logging layer. A Hono middleware assigns each request a unique ID (via `crypto.randomUUID()`) and stores it in Hono context. All log output includes this request ID for traceability.
+
+Use a simple logger wrapper around `console.info` / `console.warn` / `console.error` that prepends the request ID and timestamp. Errors include stack traces in development and safe summaries in production.
+
+Vercel captures `stdout`/`stderr` as structured logs natively, so a logging framework is not needed at the starter level. When the app grows to need log levels, redaction, or external log shipping, replace the wrapper with `pino`.
+
+### 11.4 Error Response Contract
+
+All app-owned API routes (`projects`, `uploads`, `public`, `health`) must return errors in a consistent shape: `{ code, message }` using the error code set from §11.2. Success responses are route-specific — each handler returns its own typed response shape via `c.json()`.
+
+Better Auth routes (`/api/auth/*`) are exempt from this contract — they return Better Auth's native response format.
+
+Define the shared error type in `packages/validation` and use it across all app-owned route handlers.
 
 ## 12. Validation and Forms Plan
 
@@ -601,7 +616,7 @@ The starter must demonstrate:
 
 - native form state
 - submission to typed endpoints
-- rendering validation errors from the same backend response envelope
+- rendering validation errors from the backend error response
 
 ## 13. File Upload Plan
 
@@ -625,13 +640,22 @@ Use direct-to-R2 upload flow.
 ### 13.3 Signed URL Security
 
 - expiration: 5 minutes maximum
-- maximum file size enforced at the presigned URL level (default 50 MB, configurable)
+- maximum file size: set `Content-Length` conditions on the presigned URL where supported. Additionally, validate actual object size via a HEAD request at confirm time — presigned PUT URLs cannot reliably enforce size limits on all S3-compatible stores. Reject and delete objects that exceed the configured maximum (default 50 MB).
 - content-type restricted to allowed MIME types at signing time
 - the upload-session endpoint must be rate-limited to prevent bulk signed URL generation
 
 ### 13.4 Pending Upload Cleanup
 
 Since background jobs are out of scope, upload queries filter out stale `pending` records (older than 1 hour). A `db:cleanup` root script removes them manually. Scheduled cleanup can be added later when a job runner is introduced.
+
+### 13.5 R2 Bucket Configuration
+
+The R2 bucket must be configured for direct browser uploads:
+
+- **CORS rules**: allow `PUT` from the web app origin with `Content-Type` header. Mobile uploads bypass CORS (native HTTP clients).
+- **Lifecycle rules**: objects in a `tmp/` prefix (or pending uploads older than 24 hours) should be cleaned up. Since background jobs are out of scope, configure R2 lifecycle rules on the bucket to auto-expire objects in the temp prefix.
+
+Document the required R2 bucket settings in the deployment guide.
 
 ## 14. Rate-Limit Plan
 
@@ -678,7 +702,7 @@ The web app should use shadcn/ui (CLI v4) and Tailwind CSS v4.2. Run `pnpm dlx s
 - keep the UI clean and production-credible, not placeholder quality
 - avoid over-designing the starter into a product brand system
 - prefer server-rendered first loads on web routes, then hand off interactive server-state behavior to TanStack Query
-- use shared design tokens from `tokens.json` so future apps can restyle the shell without rewriting structure
+- define the web design theme in `apps/web/styles/theme.css` using CSS custom properties, following the same design language as the mobile theme file
 
 ### 15.3 UI Infrastructure Patterns
 
@@ -686,7 +710,7 @@ The starter must include reference implementations for:
 
 - error boundaries (page-level and inline for forms/mutations)
 - loading states (page skeletons, `loading.tsx` Suspense boundaries, inline spinners)
-- toast notifications for mutation feedback (use shadcn/ui toast or sonner)
+- toast notifications for mutation feedback (use sonner)
 
 These must be demonstrated in the example features so new features can copy the approach.
 
@@ -717,7 +741,8 @@ Expo Router v7 ships native navigation primitives: `Stack.Toolbar`, `Link.AppleZ
 
 - auth-gated navigation: root layout checks auth state before rendering protected routes, with a splash screen during session verification
 - error and loading patterns: screen-level error boundary, TanStack Query loading/error indicators, toast or alert for mutation feedback
-- app lifecycle: check token validity on foreground resume via `AppState` listener; deep linking deferred to v1.1
+- app lifecycle: check session validity on foreground resume via `AppState` listener; deep linking deferred to v1.1
+- network error handling: the mobile app must include a reusable network error boundary that detects when the API is unreachable (wrong URL, no network, server down) and shows a clear "Cannot reach server" state with a retry button. This is critical for developer experience — a misconfigured `EXPO_PUBLIC_API_BASE_URL` should produce an obvious error, not cryptic failures on every screen.
 
 ### 16.4 Mobile Development Configuration
 
@@ -746,6 +771,9 @@ The starter must ship with a real `.env.example` and documented variable ownersh
 - `UPSTASH_REDIS_REST_TOKEN`
 - `EXPO_PUBLIC_API_BASE_URL`
 - `CORS_ALLOWED_ORIGINS` (for development: allows mobile clients on different origins)
+- `R2_PUBLIC_URL` — public URL or CDN endpoint for serving uploaded files (used by upload list screens)
+- `TURBO_TOKEN` — Turborepo remote cache token (CI only, optional for local dev)
+- `TURBO_TEAM` — Turborepo team slug for remote cache (CI only, optional for local dev)
 
 ### 17.2 Rules
 
@@ -756,13 +784,18 @@ The starter must ship with a real `.env.example` and documented variable ownersh
 - CORS configuration must allow requests from the mobile app during development (physical device and emulator origins)
 - production CORS can be restrictive since mobile native HTTP clients do not enforce CORS, but Expo Web does
 
+The web app does not need an `API_BASE_URL` environment variable — it uses relative URLs (`/api/...`) since the Hono backend is mounted inside the same Next.js deployment. Only the mobile app needs `EXPO_PUBLIC_API_BASE_URL` to point at the deployed web backend.
+
 ## 18. Developer Experience Plan
 
 ### 18.1 Root Scripts
 
 The root workspace should expose at least:
 
-- `dev`
+- `dev` — starts the web app (default for most development)
+- `dev:web` — starts the web app only
+- `dev:mobile` — starts the Expo mobile app only
+- `dev:all` — starts both web and mobile in parallel via Turborepo
 - `build`
 - `lint`
 - `format`
@@ -776,6 +809,7 @@ The root workspace should expose at least:
 - `db:seed` — populate development database with sample users, projects, and uploads
 - `db:cleanup` — remove stale pending upload records
 - `db:reset` — drop and recreate database, run migrations, then seed (development only)
+- `clean` — removes `node_modules`, `.turbo`, `.next`, `.expo`, and `*.tsbuildinfo` across the workspace for a fresh start
 
 ### 18.2 Quality Rules
 
@@ -793,11 +827,28 @@ The root workspace should expose at least:
 ### 18.3 Local Development Workflow
 
 Required local development experience:
-- `pnpm dev` starts both web and mobile in parallel via Turborepo
+- `pnpm dev` starts the web app by default. `pnpm dev:all` starts both web and mobile via Turborepo. Mobile development is usually run separately since it involves interactive simulator/device workflows.
 - web hot-reload must reflect changes in workspace packages without manual rebuild
 - mobile must support Expo Go for quick iteration and EAS development builds for native module testing
 - database changes: edit Drizzle schema, run `pnpm db:generate` to create migration, run `pnpm db:migrate` to apply
 - seed data must create at least: 2 test users, 5 sample projects per user, 3 sample upload records
+
+The `db:seed` script must import from `@starter/auth/server` and use Better Auth's server-side user creation API (e.g., `auth.api.signUpEmail()`) to create test users with hashed passwords. Do not INSERT directly into auth tables — Better Auth manages password hashing and session table population. Seed credentials must be documented in the README (e.g., `test@example.com` / `password123`).
+
+### 18.4 Adding a New Feature
+
+This checklist defines the expected pattern for adding a new resource or feature to a cloned starter:
+
+1. **Schema**: add the Drizzle table definition in `packages/db/schema/`
+2. **Migration**: run `pnpm db:generate` → `pnpm db:migrate`
+3. **Validation**: add Zod schemas in `packages/validation/` for create, update, and any query params
+4. **API routes**: add a route group in `packages/api/routes/` with CRUD handlers, auth middleware, and the standard error contract
+5. **Web pages**: add pages in `apps/web/app/(protected)/` with server-rendered list views and client-side TanStack Query for mutations
+6. **Web components**: add feature-specific components in `apps/web/features/{name}/`
+7. **Mobile screens**: add screens in `apps/mobile/app/` with TanStack Query hooks in `apps/mobile/src/features/{name}/`
+8. **Tests**: add Vitest tests for validation schemas and route handlers
+
+This checklist must be included in the starter's README.
 
 ## 19. Testing Plan
 
@@ -867,12 +918,13 @@ The starter must include CI from the beginning.
 ### 20.2 CI Rules
 
 - CI failures block merge
-- CI must pin **Node.js 20.9+ LTS** (Next.js 16 dropped Node 18 support). Use `node-version: '20.x'` or `'22.x'` in the workflow file.
+- CI must pin **Node.js 20.19+ LTS** (Next.js 16 dropped Node 18 support; Expo SDK 55 requires >=20.19.0). Use `node-version: '20.x'` or `'22.x'` in the workflow file.
 - generated artifacts that belong in source control must be checked
 - migrations must stay in sync with schema changes
 - CI must verify that Drizzle migrations are in sync with the current schema by running `drizzle-kit check --config packages/db/drizzle.config.ts`
 - CI must run the test suite against a dedicated test database branch
 - mobile type checking must be included in the CI typecheck stage
+- CI should configure Turborepo remote caching (`TURBO_TOKEN` and `TURBO_TEAM` environment variables) to avoid rebuilding unchanged packages across CI runs. Without remote caching, Turborepo in CI provides no speed benefit over plain pnpm scripts.
 
 ## 21. Deployment Plan
 
@@ -888,6 +940,12 @@ The starter must include CI from the beginning.
 - build and release `apps/mobile` through Expo tooling
 - mobile points at the deployed web backend base URL
 - mobile release configuration must distinguish local, staging, and production environments
+
+### 21.3 Preview and Staging Environments
+
+- **Vercel Preview Deployments**: each PR gets a preview deployment. Configure preview-specific environment variables in Vercel's project settings (preview branch DB, etc.).
+- **Neon database branches**: use Neon's branching feature to create isolated database copies for preview/staging. Document how to create a branch and set its connection string as the preview `DATABASE_URL`.
+- **Mobile staging**: define a staging `EXPO_PUBLIC_API_BASE_URL` pointing to the Vercel preview or staging URL. Document how to switch between environments in `app.config.ts` using Expo's `extra` config or EAS build profiles.
 
 ## 22. Implementation Phases
 
@@ -918,8 +976,7 @@ Deliverables:
 - Turborepo config
 - TypeScript config
 - Biome config
-- `tokens.json` with shared design tokens
-- query package skeleton
+- web theme CSS and mobile theme TypeScript file
 - web and mobile app skeletons
 - package skeletons
 
@@ -937,33 +994,33 @@ Deliverables:
 - health route
 - error contract and response envelope
 - validation package with Zod schemas
-- query package skeleton with Hono RPC client setup
-- structured logging setup with pino
+- typed Hono RPC client setup demonstrated in `apps/web/lib/api-client.ts`
+- request logging middleware with request ID propagation
 
 Exit criteria:
 
 - typed requests and responses work for non-auth routes
 - health endpoint responds correctly
-- `packages/api` types can be imported by `packages/query` without server-code leakage
+- Hono app type can be imported by apps as a type-only import for RPC client derivation without bundling server code
 
 ### Phase 3: Database and Auth
 
 Deliverables:
 
 - Drizzle schema for auth and example tables
-- Neon database connection (Strategy A: Vercel Fluid Compute with `pg` + `attachDatabasePool`; Strategy B: `@neondatabase/serverless` HTTP for fallback — see §10.3)
+- Neon database connection using `pg` with connection pool (see §10.3)
 - migrations
 - Better Auth integration with auth routes
 - protected route middleware
 - user-scoped data access rules
 - web cookie-based auth flow
-- mobile Bearer token auth flow with secure storage
+- mobile auth flow with `expoClient` and secure session storage
 
 Exit criteria:
 
 - auth works on both web and mobile
 - protected resource access is enforced
-- token refresh works on mobile
+- session persistence works on mobile
 - CSRF protection is active on web
 
 ### Phase 4: Example Features
@@ -1047,7 +1104,7 @@ These are the real risks that can slow implementation.
 
 ### 25.1 Better Auth Mobile Flow
 
-This is the highest-risk integration point because web and Expo do not share the same session model.
+This is the highest-risk integration point. While both web and mobile use cookie-based sessions via Better Auth, mobile stores session cookies in `expo-secure-store` rather than a browser cookie jar.
 
 ### 25.2 Server-Only Imports Leaking Into Mobile
 
@@ -1080,7 +1137,8 @@ Pin these versions explicitly in the root `package.json` `pnpm.overrides`:
   "pnpm": {
     "overrides": {
       "react": "19.2.0",
-      "react-dom": "19.2.0"
+      "react-dom": "19.2.0",
+      "react-native": "0.83.x"
     }
   }
 }

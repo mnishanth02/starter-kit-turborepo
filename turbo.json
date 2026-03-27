@@ -1,0 +1,39 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "ui": "tui",
+  "globalEnv": ["NODE_ENV", "CI"],
+  "tasks": {
+    "topo": {
+      "dependsOn": ["^topo"]
+    },
+    "build": {
+      "dependsOn": ["topo"],
+      "outputs": []
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "inputs": ["$TURBO_DEFAULT$", "biome.json", "tsconfig.json"],
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["topo"],
+      "inputs": ["$TURBO_DEFAULT$", "tsconfig.json"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["topo"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*", "vitest.config.ts", "$TURBO_ROOT$/vitest.shared.ts", "$TURBO_ROOT$/vitest.workspace.ts"],
+      "env": [
+        "DATABASE_URL",
+        "TEST_DATABASE_URL",
+        "CLERK_SECRET_KEY",
+        "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+        "CORS_ALLOWED_ORIGINS"
+      ],
+      "outputs": ["coverage/**"]
+    }
+  }
+}
