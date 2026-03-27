@@ -25,6 +25,10 @@ type Condition =
 type SortDescriptor = { type: 'desc'; field: keyof UploadRecord };
 
 class SelectBuilder extends Promise<UploadRecord[]> {
+  static get [Symbol.species]() {
+    return Promise;
+  }
+
   private order: SortDescriptor | undefined;
   private limitValue: number | undefined;
   private offsetValue = 0;

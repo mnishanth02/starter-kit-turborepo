@@ -25,6 +25,7 @@
     "db:studio": "pnpm --filter @starter/db db:studio",
     "db:seed": "pnpm --filter @starter/db db:seed",
     "db:reset": "pnpm --filter @starter/db db:reset",
+    "db:cleanup": "pnpm --filter @starter/db db:cleanup",
     "clean": "rm -rf node_modules .turbo apps/*/node_modules apps/*/.next apps/*/.expo packages/*/node_modules packages/*/dist && find . -name '*.tsbuildinfo' -delete"
   },
   "devDependencies": {

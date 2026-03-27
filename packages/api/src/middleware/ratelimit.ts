@@ -4,6 +4,7 @@ import { Redis } from '@upstash/redis';
 import { createMiddleware } from 'hono/factory';
 
 import { apiError } from '../lib/errors';
+import { getClientIp } from '../lib/ip';
 
 const limiters = new Map<string, Ratelimit>();
 
@@ -33,15 +34,25 @@ export function withRateLimit(name: string, limit: number, window: Duration) {
     if (!limiter) return next();
 
     const auth = c.get('auth') as { userId?: string } | undefined;
-    const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown';
+    const ip = getClientIp(c);
     const identifier = auth?.userId ? `${name}:user:${auth.userId}` : `${name}:ip:${ip}`;
 
-    const { success, limit: rateLimit, remaining, reset } = await limiter.limit(identifier);
+    let result: Awaited<ReturnType<Ratelimit['limit']>>;
+    try {
+      result = await limiter.limit(identifier);
+    } catch {
+      // Fail open: if Redis is down, allow the request through
+      return next();
+    }
+
+    const { success, limit: rateLimit, remaining, reset } = result;
     c.header('X-RateLimit-Limit', String(rateLimit));
     c.header('X-RateLimit-Remaining', String(remaining));
     c.header('X-RateLimit-Reset', String(reset));
 
     if (!success) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
+      c.header('Retry-After', String(retryAfterSeconds));
       return apiError(c, ErrorCode.RATE_LIMITED, 'Too many requests. Please try again later.');
     }
     return next();

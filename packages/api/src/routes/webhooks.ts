@@ -1,9 +1,11 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { WebhookEvent } from '@clerk/backend';
 import { db, projects, uploads } from '@starter/db';
+import { ErrorCode } from '@starter/validation';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 
+import { apiError } from '../lib/errors';
 import { deleteObject } from '../lib/storage';
 
 const TOLERANCE_SECONDS = 5 * 60;
@@ -62,7 +64,7 @@ async function verifyClerkWebhook(
 export const webhooksRoute = new Hono().post('/', async (c) => {
   const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    return c.json({ error: 'Webhook secret not configured' }, 500);
+    return apiError(c, ErrorCode.INTERNAL_ERROR, 'Webhook secret not configured');
   }
 
   const rawBody = await c.req.text();
@@ -76,14 +78,14 @@ export const webhooksRoute = new Hono().post('/', async (c) => {
   );
 
   if (!valid) {
-    return c.json({ error: 'Invalid signature' }, 401);
+    return apiError(c, ErrorCode.UNAUTHORIZED, 'Invalid signature');
   }
 
   let event: WebhookEvent;
   try {
     event = JSON.parse(rawBody) as WebhookEvent;
   } catch {
-    return c.json({ error: 'Invalid JSON' }, 400);
+    return apiError(c, ErrorCode.VALIDATION_ERROR, 'Invalid webhook payload');
   }
 
   if (event.type === 'user.deleted') {
