@@ -21,10 +21,12 @@ export function apiError(c: Context, code: ErrorCode, message: string, errors?: 
 
 export function validationError(
   c: Context,
-  zodError: { issues: Array<{ path: (string | number)[]; message: string }> },
+  zodError: { issues: Array<{ path: PropertyKey[]; message: string }> },
 ) {
   const errors: FieldError[] = zodError.issues.map((issue) => ({
-    field: issue.path.join('.'),
+    field: issue.path
+      .map((segment) => (typeof segment === 'symbol' ? String(segment) : segment))
+      .join('.'),
     message: issue.message,
   }));
   return apiError(c, ErrorCode.VALIDATION_ERROR, 'Validation failed', errors);

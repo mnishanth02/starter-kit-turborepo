@@ -16,6 +16,8 @@
     "check": "biome check --write .",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
+    "test:unit": "vitest run --config vitest.workspace.ts",
+    "test:watch": "vitest --config vitest.workspace.ts",
     "update": "pnpm up -r --latest",
     "db:generate": "pnpm --filter @starter/db db:generate",
     "db:migrate": "pnpm --filter @starter/db db:migrate",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.9",
-    "turbo": "2.8.20"
+    "turbo": "2.8.20",
+    "vitest": "^3.2.4"
   }
 }
