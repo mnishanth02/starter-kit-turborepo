@@ -166,6 +166,12 @@ describeIfTestDatabase('GET /api/projects/:id', () => {
     await expect(res.json()).resolves.toMatchObject({ code: 'NOT_FOUND' });
   });
 
+  it('returns 404 for an invalid project id format', async () => {
+    const res = await req(USER_A, '/api/projects/not-a-uuid');
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
   it('returns 403 when a different user tries to access the project', async () => {
     const project = await seedProject(USER_A);
     const res = await req(USER_B, `/api/projects/${project.id}`);
@@ -197,6 +203,15 @@ describeIfTestDatabase('PUT /api/projects/:id', () => {
 
   it('returns 404 for a non-existent project id', async () => {
     const res = await req(USER_A, '/api/projects/00000000-0000-0000-0000-000000000000', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Updated' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 for an invalid project id format', async () => {
+    const res = await req(USER_A, '/api/projects/not-a-uuid', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Updated' }),

@@ -1,102 +1,77 @@
-import { Image } from 'expo-image';
 import { Link } from 'expo-router';
-import { Alert, Platform, StyleSheet } from 'react-native';
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { ScrollView, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 export default function HomeScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }
-    >
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
+    <ScrollView contentContainerStyle={styles.container}>
+      <ThemedView style={styles.hero}>
+        <ThemedText type="title">Starter Kit dashboard</ThemedText>
+        <ThemedText style={styles.heroText}>
+          Phase 4 brings concrete projects and uploads flows to the mobile app, backed by the same
+          API contracts as web.
         </ThemedText>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction
-              title="Action"
-              icon="cube"
-              onPress={() => Alert.alert('Action pressed')}
-            />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => Alert.alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => Alert.alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
+      <ThemedView style={styles.card}>
+        <ThemedText type="subtitle">Projects</ThemedText>
+        <ThemedText style={styles.cardText}>
+          Browse your projects, create new ones, edit status, and delete with confirmation.
         </ThemedText>
+        <Link href={'/(protected)/(tabs)/projects' as never} style={styles.link}>
+          <ThemedText type="link">Open projects</ThemedText>
+        </Link>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
+
+      <ThemedView style={styles.card}>
+        <ThemedText type="subtitle">Uploads</ThemedText>
+        <ThemedText style={styles.cardText}>
+          Pick a document, request a signed URL, upload directly, and manage completed records.
         </ThemedText>
+        <Link href={'/(protected)/(tabs)/uploads' as never} style={styles.link}>
+          <ThemedText type="link">Open uploads</ThemedText>
+        </Link>
       </ThemedView>
-    </ParallaxScrollView>
+
+      <ThemedView style={styles.card}>
+        <ThemedText type="subtitle">Phase 5 placeholder</ThemedText>
+        <ThemedText style={styles.cardText}>
+          The shared protected shell is ready for the upcoming rate-limit demo surface.
+        </ThemedText>
+        <Link href="/modal" style={styles.link}>
+          <ThemedText type="link">View placeholder modal</ThemedText>
+        </Link>
+      </ThemedView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  card: {
+    borderColor: '#e5e7eb',
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 12,
+    padding: 20,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  cardText: {
+    lineHeight: 22,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    gap: 16,
+    padding: 20,
+  },
+  hero: {
+    borderRadius: 28,
+    gap: 12,
+    paddingVertical: 8,
+  },
+  heroText: {
+    lineHeight: 24,
+  },
+  link: {
+    paddingTop: 8,
   },
 });

@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/clerk-expo';
+import { useQueryClient } from '@tanstack/react-query';
 import { Tabs } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 
@@ -9,9 +10,15 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 function SignOutButton() {
   const { signOut } = useAuth();
+  const queryClient = useQueryClient();
+
+  const handleSignOut = async () => {
+    queryClient.clear();
+    await signOut();
+  };
 
   return (
-    <TouchableOpacity onPress={() => signOut()} style={styles.signOut}>
+    <TouchableOpacity onPress={() => void handleSignOut()} style={styles.signOut}>
       <Text style={styles.signOutText}>Sign Out</Text>
     </TouchableOpacity>
   );
@@ -37,10 +44,25 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="projects"
+        options={{
+          title: 'Projects',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="folder.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="uploads"
+        options={{
+          title: 'Uploads',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="square.and.arrow.up.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          href: null,
         }}
       />
     </Tabs>

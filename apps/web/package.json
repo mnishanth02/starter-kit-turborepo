@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.7",
+    "@hookform/resolvers": "^5.2.2",
     "@starter/api": "workspace:*",
     "@starter/auth": "workspace:*",
     "@starter/db": "workspace:*",
@@ -19,7 +20,9 @@
     "hono": "^4.12.9",
     "next": "16.2.1",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.72.0",
+    "sonner": "^2.0.7"
   },
   "devDependencies": {
     "@starter/typescript-config": "workspace:*",

@@ -13,6 +13,8 @@ import type { OpaqueColorValue, StyleProp, TextStyle } from 'react-native';
 const MAPPING = {
   'house.fill': 'home',
   'paperplane.fill': 'send',
+  'folder.fill': 'folder',
+  'square.and.arrow.up.fill': 'upload',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
 } satisfies Record<string, ComponentProps<typeof MaterialIcons>['name']>;
