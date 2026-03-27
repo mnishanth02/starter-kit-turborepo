@@ -7,6 +7,8 @@ import { createMiddleware } from 'hono/factory';
 import { apiError, validationError } from '../lib/errors';
 import { requireAuth, requireResourceOwner } from '../middleware/auth';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // Extend Hono context variable map so route handlers can read the loaded project
 declare module 'hono' {
   interface ContextVariableMap {
@@ -22,7 +24,7 @@ declare module 'hono' {
 function loadProject() {
   return createMiddleware(async (c, next) => {
     const id = c.req.param('id');
-    if (!id) {
+    if (!id || !UUID_PATTERN.test(id)) {
       return apiError(c, ErrorCode.NOT_FOUND, 'Project not found');
     }
 
@@ -109,8 +111,17 @@ const projectsRoute = new Hono()
         return validationError(c, parsed.error);
       }
 
+      if (Object.keys(parsed.data).length === 0) {
+        return apiError(c, ErrorCode.VALIDATION_ERROR, 'Validation failed', [
+          {
+            field: 'body',
+            message: 'At least one field must be provided for update',
+          },
+        ]);
+      }
+
       const id = c.req.param('id');
-      if (!id) {
+      if (!id || !UUID_PATTERN.test(id)) {
         return apiError(c, ErrorCode.NOT_FOUND, 'Project not found');
       }
 
@@ -119,6 +130,10 @@ const projectsRoute = new Hono()
         .set(parsed.data)
         .where(eq(projects.id, id))
         .returning();
+
+      if (!updated) {
+        return apiError(c, ErrorCode.NOT_FOUND, 'Project not found');
+      }
 
       return c.json(updated);
     },

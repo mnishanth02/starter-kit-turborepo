@@ -226,6 +226,20 @@ describeIfTestDatabase('PUT /api/projects/:id', () => {
     expect(body.code).toBe('VALIDATION_ERROR');
   });
 
+  it('returns 422 when no update fields are provided', async () => {
+    const project = await seedProject(USER_A);
+    const res = await req(USER_A, `/api/projects/${project.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(422);
+    await expect(res.json()).resolves.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      errors: [{ field: 'body', message: 'At least one field must be provided for update' }],
+    });
+  });
+
   it('updates and returns the project on happy path', async () => {
     const project = await seedProject(USER_A, { name: 'Old Name' });
     const res = await req(USER_A, `/api/projects/${project.id}`, {
