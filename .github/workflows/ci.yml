@@ -50,13 +50,13 @@ jobs:
       # Playwright E2E requires secrets (DATABASE_URL, CLERK_SECRET_KEY, etc.)
       # Configure these in your repo's GitHub Actions secrets to enable E2E in CI.
       - name: Install Playwright browsers
-        if: ${{ env.DATABASE_URL != '' }}
+        if: ${{ secrets.DATABASE_URL != '' }}
         run: cd apps/web && pnpm exec playwright install --with-deps chromium
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Playwright E2E tests
-        if: ${{ env.DATABASE_URL != '' }}
+        if: ${{ secrets.DATABASE_URL != '' }}
         run: cd apps/web && pnpm exec playwright test
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
