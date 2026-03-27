@@ -1,5 +1,8 @@
 import { db } from './client';
+import { loadDbEnv } from './load-env';
 import { projects, uploads } from './schema';
+
+loadDbEnv();
 
 // Use hardcoded test user IDs — in a real setup you'd use Clerk Backend API
 // to create test users, but for a starter kit we just use placeholder IDs.

@@ -1,6 +1,9 @@
 import { and, eq, lt } from 'drizzle-orm';
 import { db } from './client';
+import { loadDbEnv } from './load-env';
 import { uploads } from './schema';
+
+loadDbEnv();
 
 async function cleanup() {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);

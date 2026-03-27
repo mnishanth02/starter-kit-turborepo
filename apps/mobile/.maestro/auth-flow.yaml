@@ -1,0 +1,32 @@
+# Maestro E2E tests for the mobile app
+# Run manually: maestro test .maestro/
+#
+# Prerequisites:
+#   1. Install Maestro CLI: https://maestro.mobile.dev/getting-started/installing-maestro
+#   2. Start the Expo dev server: pnpm dev
+#   3. Build and run on a simulator/emulator or device
+#
+# Set credentials via environment variables:
+#   MAESTRO_EMAIL   — test account email
+#   MAESTRO_PASSWORD — test account password
+# Example: MAESTRO_EMAIL=test@example.com MAESTRO_PASSWORD=Secret1! maestro test .maestro/
+
+appId: com.starter.mobile  # Update to match your app.json "ios.bundleIdentifier" / "android.package"
+---
+
+# Auth flow: sign-in screen → enter credentials → reach protected tabs
+
+- assertVisible: "Sign In"
+
+- tapOn:
+    id: "email-input"
+- inputText: "${MAESTRO_EMAIL}"
+
+- tapOn:
+    id: "password-input"
+- inputText: "${MAESTRO_PASSWORD}"
+
+- tapOn: "Sign In"
+
+# After sign-in we should land on the protected home tab
+- assertVisible: "Projects"

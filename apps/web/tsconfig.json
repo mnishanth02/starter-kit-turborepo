@@ -3,11 +3,7 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"]
-    },
-    "noEmit": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "isolatedModules": true
+    }
   },
   "include": [
     "next-env.d.ts",

@@ -1,5 +1,8 @@
 import { sql } from 'drizzle-orm';
 import { db } from './client';
+import { loadDbEnv } from './load-env';
+
+loadDbEnv();
 
 async function reset() {
   if (process.env.ALLOW_DB_RESET !== 'true') {

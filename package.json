@@ -18,6 +18,8 @@
     "test": "turbo test",
     "test:unit": "vitest run --config vitest.workspace.ts",
     "test:watch": "vitest --config vitest.workspace.ts",
+    "test:web": "pnpm --filter @starter/web test:e2e",
+    "test:mobile": "pnpm --filter @starter/mobile test",
     "update": "pnpm up -r --latest",
     "db:generate": "pnpm --filter @starter/db db:generate",
     "db:migrate": "pnpm --filter @starter/db db:migrate",

@@ -1,6 +1,8 @@
 import { sql } from 'drizzle-orm';
-
 import { db, isTestEnvironment } from './client';
+import { loadDbEnv } from './load-env';
+
+loadDbEnv();
 
 export const TEST_TABLES = ['projects', 'uploads'] as const;
 export type TestDatabaseTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];

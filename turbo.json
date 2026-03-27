@@ -2,13 +2,12 @@
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
   "globalEnv": ["NODE_ENV", "CI"],
-  "globalDependencies": ["vitest.shared.ts", "vitest.workspace.ts"],
   "tasks": {
     "topo": {
       "dependsOn": ["^topo"]
     },
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["topo"],
       "outputs": []
     },
     "dev": {
@@ -16,17 +15,17 @@
       "persistent": true
     },
     "lint": {
-      "inputs": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "biome.json", "tsconfig.json"],
+      "inputs": ["$TURBO_DEFAULT$", "biome.json", "tsconfig.json"],
       "outputs": []
     },
     "typecheck": {
       "dependsOn": ["topo"],
-      "inputs": ["**/*.ts", "**/*.tsx", "tsconfig.json"],
+      "inputs": ["$TURBO_DEFAULT$", "tsconfig.json"],
       "outputs": []
     },
     "test": {
       "dependsOn": ["topo"],
-      "inputs": ["$TURBO_DEFAULT$", "vitest.config.ts"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*", "vitest.config.ts", "$TURBO_ROOT$/vitest.shared.ts", "$TURBO_ROOT$/vitest.workspace.ts"],
       "env": [
         "DATABASE_URL",
         "TEST_DATABASE_URL",
