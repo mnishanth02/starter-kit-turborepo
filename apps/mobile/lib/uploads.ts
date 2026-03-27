@@ -26,6 +26,10 @@ function buildUrl(path: string) {
   return `${getApiEnv().EXPO_PUBLIC_API_BASE_URL}${path}`;
 }
 
+function encodePathSegment(value: string) {
+  return encodeURIComponent(value);
+}
+
 function getHeaders(token?: string | null, hasBody?: boolean): Record<string, string> {
   return {
     ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
@@ -53,7 +57,7 @@ export async function createUploadSession(input: UploadSessionRequest, token?: s
 
 export async function confirmUpload(id: string, input: UploadConfirmInput, token?: string | null) {
   return unwrapResponse<UploadRecord>(
-    await fetch(buildUrl(`/api/uploads/${id}/confirm`), {
+    await fetch(buildUrl(`/api/uploads/${encodePathSegment(id)}/confirm`), {
       method: 'POST',
       headers: getHeaders(token, true),
       body: JSON.stringify(input),
@@ -62,10 +66,13 @@ export async function confirmUpload(id: string, input: UploadConfirmInput, token
 }
 
 export async function deleteUpload(id: string, token?: string | null) {
-  const response = await fetch(buildUrl(`/api/uploads/${id}?deleteObject=true`), {
-    method: 'DELETE',
-    headers: getHeaders(token),
-  });
+  const response = await fetch(
+    buildUrl(`/api/uploads/${encodePathSegment(id)}?deleteObject=true`),
+    {
+      method: 'DELETE',
+      headers: getHeaders(token),
+    },
+  );
 
   if (!response.ok) {
     await unwrapResponse<never>(response);

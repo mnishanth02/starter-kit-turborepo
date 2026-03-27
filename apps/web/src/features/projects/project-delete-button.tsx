@@ -13,8 +13,10 @@ export function ProjectDeleteButton({ id, name }: { id: string; name: string }) 
   const mutation = useMutation({
     mutationFn: async () => deleteProject(id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: projectsQueryKey });
-      await queryClient.removeQueries({ queryKey: projectQueryKey(id) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: projectsQueryKey }),
+        queryClient.removeQueries({ queryKey: projectQueryKey(id) }),
+      ]);
       toast.success('Project deleted');
       router.push('/projects');
     },

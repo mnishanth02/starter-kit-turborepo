@@ -19,6 +19,10 @@ function buildUrl(path: string) {
   return `${getApiEnv().EXPO_PUBLIC_API_BASE_URL}${path}`;
 }
 
+function encodePathSegment(value: string) {
+  return encodeURIComponent(value);
+}
+
 function getHeaders(token?: string | null, hasBody?: boolean): Record<string, string> {
   return {
     ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
@@ -36,7 +40,7 @@ export async function listProjects(token?: string | null) {
 
 export async function getProject(id: string, token?: string | null) {
   return unwrapResponse<Project>(
-    await fetch(buildUrl(`/api/projects/${id}`), {
+    await fetch(buildUrl(`/api/projects/${encodePathSegment(id)}`), {
       headers: getHeaders(token),
     }),
   );
@@ -54,7 +58,7 @@ export async function createProject(input: CreateProjectInput, token?: string | 
 
 export async function updateProject(id: string, input: UpdateProjectInput, token?: string | null) {
   return unwrapResponse<Project>(
-    await fetch(buildUrl(`/api/projects/${id}`), {
+    await fetch(buildUrl(`/api/projects/${encodePathSegment(id)}`), {
       method: 'PUT',
       headers: getHeaders(token, true),
       body: JSON.stringify(input),
@@ -63,7 +67,7 @@ export async function updateProject(id: string, input: UpdateProjectInput, token
 }
 
 export async function deleteProject(id: string, token?: string | null) {
-  const response = await fetch(buildUrl(`/api/projects/${id}`), {
+  const response = await fetch(buildUrl(`/api/projects/${encodePathSegment(id)}`), {
     method: 'DELETE',
     headers: getHeaders(token),
   });

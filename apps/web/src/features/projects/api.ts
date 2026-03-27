@@ -19,12 +19,20 @@ function buildUrl(path: string) {
   return `${getApiBaseUrl()}${path}`;
 }
 
+function encodePathSegment(value: string) {
+  return encodeURIComponent(value);
+}
+
+function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
+  return Object.fromEntries(new Headers(headers).entries());
+}
+
 async function request<T>(path: string, init?: RequestInit) {
   const response = await fetch(buildUrl(path), {
     ...init,
     headers: {
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(init?.headers ?? {}),
+      ...normalizeHeaders(init?.headers),
     },
     cache: 'no-store',
   });
@@ -37,7 +45,7 @@ export async function listProjects(headers?: HeadersInit) {
 }
 
 export async function getProject(id: string, headers?: HeadersInit) {
-  return request<Project>(`/api/projects/${id}`, { headers });
+  return request<Project>(`/api/projects/${encodePathSegment(id)}`, { headers });
 }
 
 export async function createProject(input: CreateProjectInput) {
@@ -48,15 +56,16 @@ export async function createProject(input: CreateProjectInput) {
 }
 
 export async function updateProject(id: string, input: UpdateProjectInput) {
-  return request<Project>(`/api/projects/${id}`, {
+  return request<Project>(`/api/projects/${encodePathSegment(id)}`, {
     method: 'PUT',
     body: JSON.stringify(input),
   });
 }
 
-export async function deleteProject(id: string) {
-  const response = await fetch(buildUrl(`/api/projects/${id}`), {
+export async function deleteProject(id: string, headers?: HeadersInit) {
+  const response = await fetch(buildUrl(`/api/projects/${encodePathSegment(id)}`), {
     method: 'DELETE',
+    headers: normalizeHeaders(headers),
     cache: 'no-store',
   });
 

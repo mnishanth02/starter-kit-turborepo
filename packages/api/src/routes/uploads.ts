@@ -66,11 +66,6 @@ const uploads = new Hono()
 
     const uploadId = crypto.randomUUID();
     const objectKey = createObjectKey(auth.userId, uploadId, parsed.data.filename);
-    const uploadUrl = await createSignedUploadUrl(
-      objectKey,
-      parsed.data.contentType,
-      parsed.data.sizeBytes,
-    );
 
     await db.insert(uploadsTable).values({
       id: uploadId,
@@ -81,6 +76,16 @@ const uploads = new Hono()
       sizeBytes: parsed.data.sizeBytes,
       status: 'pending',
     });
+
+    let uploadUrl: string;
+    try {
+      uploadUrl = await createSignedUploadUrl(objectKey, parsed.data.contentType);
+    } catch (error) {
+      await db
+        .delete(uploadsTable)
+        .where(and(eq(uploadsTable.id, uploadId), eq(uploadsTable.userId, auth.userId)));
+      throw error;
+    }
 
     return c.json({
       id: uploadId,
@@ -118,6 +123,10 @@ const uploads = new Hono()
       return apiError(c, ErrorCode.NOT_FOUND, 'Upload not found');
     }
 
+    if (uploadRecord.status !== 'pending') {
+      return apiError(c, ErrorCode.CONFLICT, 'Upload has already been processed');
+    }
+
     if (uploadRecord.objectKey !== parsed.data.objectKey) {
       return apiError(
         c,
@@ -147,6 +156,24 @@ const uploads = new Hono()
 
       return apiError(c, ErrorCode.VALIDATION_ERROR, 'Validation failed', [
         { field: 'sizeBytes', message: 'Uploaded object exceeds the 50MB limit' },
+      ]);
+    }
+
+    if (objectMetadata.contentLength !== uploadRecord.sizeBytes) {
+      await deleteObject(uploadRecord.objectKey);
+      await db
+        .update(uploadsTable)
+        .set({
+          status: 'failed',
+          updatedAt: new Date(),
+        })
+        .where(and(eq(uploadsTable.id, uploadId), eq(uploadsTable.userId, auth.userId)));
+
+      return apiError(c, ErrorCode.VALIDATION_ERROR, 'Validation failed', [
+        {
+          field: 'sizeBytes',
+          message: 'Uploaded object size does not match the requested upload session',
+        },
       ]);
     }
 
@@ -235,13 +262,13 @@ const uploads = new Hono()
       return apiError(c, ErrorCode.NOT_FOUND, 'Upload not found');
     }
 
-    await db
-      .delete(uploadsTable)
-      .where(and(eq(uploadsTable.id, uploadId), eq(uploadsTable.userId, auth.userId)));
-
     if (shouldDeleteObject) {
       await deleteObject(uploadRecord.objectKey);
     }
+
+    await db
+      .delete(uploadsTable)
+      .where(and(eq(uploadsTable.id, uploadId), eq(uploadsTable.userId, auth.userId)));
 
     return c.json({
       id: uploadId,

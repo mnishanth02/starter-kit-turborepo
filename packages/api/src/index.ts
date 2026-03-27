@@ -42,7 +42,12 @@ app.use(
     credentials: true,
   }),
 );
-app.use('*', clerkAuthMiddleware);
+app.use('/me', clerkAuthMiddleware);
+app.use('/me/*', clerkAuthMiddleware);
+app.use('/projects', clerkAuthMiddleware);
+app.use('/projects/*', clerkAuthMiddleware);
+app.use('/uploads', clerkAuthMiddleware);
+app.use('/uploads/*', clerkAuthMiddleware);
 
 // Routes — chain to capture types for RPC client derivation
 const routes = app

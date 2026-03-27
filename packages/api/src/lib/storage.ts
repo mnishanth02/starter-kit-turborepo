@@ -86,21 +86,13 @@ export function getStoragePublicUrl(): string | null {
   return resolveStorageConfig().publicUrl;
 }
 
-export async function createSignedUploadUrl(
-  key: string,
-  contentType: string,
-  maxSize: number,
-): Promise<string> {
+export async function createSignedUploadUrl(key: string, contentType: string): Promise<string> {
   if (!key.trim()) {
     throw new Error('Storage object key is required');
   }
 
   if (!contentType.trim()) {
     throw new Error('Storage content type is required');
-  }
-
-  if (!Number.isFinite(maxSize) || maxSize <= 0) {
-    throw new Error('Storage max size must be a positive number');
   }
 
   return getSignedUrl(

@@ -133,8 +133,10 @@ function CreateProjectForm() {
         description: values.description?.trim() ? values.description.trim() : undefined,
       }),
     onSuccess: async (project) => {
-      await queryClient.invalidateQueries({ queryKey: projectsQueryKey });
-      await queryClient.invalidateQueries({ queryKey: projectQueryKey(project.id) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: projectsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: projectQueryKey(project.id) }),
+      ]);
       toast.success('Project created');
       router.push(`/projects/${project.id}`);
     },
@@ -204,8 +206,10 @@ function EditProjectForm({ project }: { project: Project }) {
         status: values.status,
       }),
     onSuccess: async (updatedProject) => {
-      await queryClient.invalidateQueries({ queryKey: projectsQueryKey });
-      await queryClient.invalidateQueries({ queryKey: projectQueryKey(project.id) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: projectsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: projectQueryKey(project.id) }),
+      ]);
       toast.success('Project updated');
       router.push(`/projects/${updatedProject.id}`);
     },

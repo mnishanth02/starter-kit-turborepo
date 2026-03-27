@@ -12,6 +12,8 @@ import {
   uploadsQueryKey,
 } from './api';
 
+const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024;
+
 function formatFileSize(bytes: number) {
   if (bytes < 1024 * 1024) {
     return `${Math.round(bytes / 1024)} KB`;
@@ -31,6 +33,14 @@ export function UploadsScreen() {
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
+      if (file.size <= 0) {
+        throw new Error('Could not determine the selected file size. Please choose another file.');
+      }
+
+      if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+        throw new Error('Please choose a file that is 50MB or smaller.');
+      }
+
       const session = await createUploadSession({
         filename: file.name,
         contentType: file.type || 'application/octet-stream',

@@ -340,6 +340,49 @@ describe('upload routes', () => {
     expect(mockState.getById(session.id)?.status).toBe('complete');
   });
 
+  it('rejects confirming an upload that is no longer pending', async () => {
+    const sessionResponse = await requestAs('user_test_1', '/api/uploads/session', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        filename: 'avatar.png',
+        contentType: 'image/png',
+        sizeBytes: 4,
+      }),
+    });
+    const session = (await sessionResponse.json()) as UploadSessionResponse;
+
+    await uploadObject(session.objectKey, new Uint8Array([1, 2, 3, 4]), 'image/png');
+
+    const firstConfirmResponse = await requestAs(
+      'user_test_1',
+      `/api/uploads/${session.id}/confirm`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ objectKey: session.objectKey }),
+      },
+    );
+
+    expect(firstConfirmResponse.status).toBe(200);
+
+    const secondConfirmResponse = await requestAs(
+      'user_test_1',
+      `/api/uploads/${session.id}/confirm`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ objectKey: session.objectKey }),
+      },
+    );
+
+    expect(secondConfirmResponse.status).toBe(409);
+    await expect(secondConfirmResponse.json()).resolves.toMatchObject({
+      code: 'CONFLICT',
+      message: 'Upload has already been processed',
+    });
+  });
+
   it('rejects oversized uploaded objects, deletes them from R2, and marks the record failed', async () => {
     const sessionResponse = await requestAs('user_test_1', '/api/uploads/session', {
       method: 'POST',
@@ -365,6 +408,41 @@ describe('upload routes', () => {
       code: 'VALIDATION_ERROR',
       message: 'Validation failed',
       errors: [{ field: 'sizeBytes', message: 'Uploaded object exceeds the 50MB limit' }],
+    });
+    expect(getR2Object('test-bucket', session.objectKey)).toBeUndefined();
+    expect(mockState.getById(session.id)?.status).toBe('failed');
+  });
+
+  it('rejects uploaded objects whose size does not match the requested session', async () => {
+    const sessionResponse = await requestAs('user_test_1', '/api/uploads/session', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        filename: 'avatar.png',
+        contentType: 'image/png',
+        sizeBytes: 4,
+      }),
+    });
+    const session = (await sessionResponse.json()) as UploadSessionResponse;
+
+    await uploadObject(session.objectKey, new Uint8Array([1, 2, 3]), 'image/png');
+
+    const confirmResponse = await requestAs('user_test_1', `/api/uploads/${session.id}/confirm`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ objectKey: session.objectKey }),
+    });
+
+    expect(confirmResponse.status).toBe(422);
+    await expect(confirmResponse.json()).resolves.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: 'Validation failed',
+      errors: [
+        {
+          field: 'sizeBytes',
+          message: 'Uploaded object size does not match the requested upload session',
+        },
+      ],
     });
     expect(getR2Object('test-bucket', session.objectKey)).toBeUndefined();
     expect(mockState.getById(session.id)?.status).toBe('failed');

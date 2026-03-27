@@ -1,7 +1,7 @@
 import { useAuth } from '@clerk/clerk-expo';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tabs } from 'expo-router';
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -13,8 +13,15 @@ function SignOutButton() {
   const queryClient = useQueryClient();
 
   const handleSignOut = async () => {
-    queryClient.clear();
-    await signOut();
+    try {
+      await signOut();
+      queryClient.clear();
+    } catch (error) {
+      Alert.alert(
+        'Sign out failed',
+        error instanceof Error ? error.message : 'Please try signing out again.',
+      );
+    }
   };
 
   return (

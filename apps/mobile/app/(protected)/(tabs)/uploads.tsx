@@ -12,6 +12,8 @@ import {
   uploadsQueryKey,
 } from '@/lib/uploads';
 
+const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024;
+
 function formatFileSize(bytes: number) {
   if (bytes < 1024 * 1024) {
     return `${Math.round(bytes / 1024)} KB`;
@@ -47,14 +49,19 @@ export default function UploadsTab() {
   const uploadMutation = useMutation({
     mutationFn: async (asset: DocumentPicker.DocumentPickerAsset) => {
       const token = await getToken();
-      const fileResponse = await fetch(asset.uri);
-      const body = await fileResponse.blob();
-      const contentType = asset.mimeType || body.type || 'application/octet-stream';
-      const sizeBytes = asset.size ?? body.size;
+      const sizeBytes = asset.size;
 
       if (!sizeBytes || sizeBytes <= 0) {
         throw new Error('Could not determine the selected file size. Please choose another file.');
       }
+
+      if (sizeBytes > MAX_UPLOAD_SIZE_BYTES) {
+        throw new Error('Please choose a file that is 50MB or smaller.');
+      }
+
+      const fileResponse = await fetch(asset.uri);
+      const body = await fileResponse.blob();
+      const contentType = asset.mimeType || body.type || 'application/octet-stream';
 
       const session = await createUploadSession(
         {
