@@ -1,11 +1,20 @@
 import { z } from 'zod';
 
+const clerkPublishableKeySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine(
+    (value) => value.startsWith('pk_test_') || value.startsWith('pk_live_'),
+    'EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY must be a Clerk publishable key from the Clerk dashboard API keys page (pk_test_... or pk_live_...).',
+  );
+
 const clerkEnvSchema = z.object({
-  EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
+  EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: clerkPublishableKeySchema,
 });
 
 const apiEnvSchema = z.object({
-  EXPO_PUBLIC_API_BASE_URL: z.string().url(),
+  EXPO_PUBLIC_API_BASE_URL: z.string().trim().url(),
 });
 
 type ClerkEnv = z.infer<typeof clerkEnvSchema>;

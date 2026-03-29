@@ -45,7 +45,7 @@ export function NetworkErrorBoundary({ children }: NetworkErrorBoundaryProps) {
         method: 'GET',
         signal: controller.signal,
       });
-      const reachable = response.ok || response.status < 500;
+      const reachable = response.status >= 100 && response.status < 600;
       setIsApiReachable(reachable);
       return reachable;
     } catch {
