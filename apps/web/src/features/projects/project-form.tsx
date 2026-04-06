@@ -68,7 +68,7 @@ function ProjectFormFields({
         </label>
         <input
           id={nameId}
-          className="w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none transition focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
+          className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
           disabled={isPending}
           placeholder="Acme launch site"
           {...register('name')}
@@ -84,7 +84,7 @@ function ProjectFormFields({
         </label>
         <textarea
           id={descriptionId}
-          className="min-h-32 w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none transition focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
+          className="min-h-32 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
           disabled={isPending}
           placeholder="What is this project for?"
           {...register('description')}
@@ -105,7 +105,7 @@ function ProjectFormFields({
           </label>
           <select
             id={statusId}
-            className="w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none transition focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
+            className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
             disabled={isPending}
             {...register('status')}
           >
